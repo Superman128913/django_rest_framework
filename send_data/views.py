@@ -11,6 +11,7 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from django.http import Http404
 from django.utils import timezone
+from django.db.models import Sum, Avg
 
 
 # Class based view to Get User Details using Token Authentication
@@ -192,17 +193,50 @@ class OrderDelete(APIView):
 
 
 class OrderMatch(APIView):
-    pass
-    # user_id = Token.objects.get(key=self.request.META.get('HTTP_AUTHORIZATION', None)).user_id
+    def post(self, request, format=None):
+        user_id = Token.objects.get(key=self.request.META.get('HTTP_AUTHORIZATION', None)).user_id
+        orders = Orders.objects.filter(user=user_id).all()
+        for order in orders:
+            if(order.type == 'SELL'):
+                current_volume = Holdings.objects.filter(user=user_id).aggregate(investment=Sum('volume'))['investment']
+                if current_volume > order.bid_volume:
+                    order.executed_volume = order.bid_volume
+                    order.save()
+                else:
+                    new_order = {
+                        'bid_price': order.bid_price,
+                        'bid_volume': order.bid_volume,
+                        'stock': order.stock.id,
+                        'type': 'BUY',
+                        'user': user_id,
+                        'status': 'COMPLETE',
+                        'executed_volume': 0
+                    }
+                    serializer = OrderSerializer(data=new_order)
+                    if serializer.is_valid():
+                        serializer.save()
+            else:
+                buy_obj = Orders.objects.all().exclude(user=user_id).order_by('bid_price')[0]
+                buy_obj.execution_volume = order.bid_volume
+                buy_obj.save()
+        
+        all_order = Orders.objects.filter(user=user_id).all()
+        serializer = OrderSerializer(all_order, many=True)
+        return Response(serializer.data)
+                
 
 
 class GetHolding(APIView):
     def get(self, request, format=None):
         user_id = Token.objects.get(key=self.request.META.get('HTTP_AUTHORIZATION', None)).user_id
-        data = {
-            "investment": 100.00,
-            "current_value": 100.00
-        }
+        data = Holdings.objects.filter(user=user_id).aggregate(investment=Sum('volume'), current_value=Sum('bid_price'))
+        posessed = Holdings.objects.values('stock').annotate(avg_bid_price=Avg('bid_price'), total_volume=Sum('volume'))
+        for each in posessed:
+            name = Stocks.objects.get(pk=each['stock']).sector.name
+            each['name'] = name
+        
+        data['stocks_posessed'] = posessed
+        
         return Response(data)
 
         

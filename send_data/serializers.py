@@ -59,14 +59,14 @@ class StockSerializer(serializers.ModelSerializer):
         fields = ['name', 'sector', 'total_volume', 'unallocated', 'price']
 
 
-#Serializer for stock
+#Serializer for order
 class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Orders
         fields = '__all__'
 
 
-#Serializer for ohlcv
+#Serializer for market
 class MarketSerializer(serializers.ModelSerializer):
     class Meta:
         model = Market_day
@@ -78,3 +78,10 @@ class OhlcvSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ohlcv
         fields = '__all__'
+
+
+#Serializer for holding
+# class HoldingSerializer(serializers.Serializer):
+    # id = serializers.IntegerField()
+    # avg_bid_price = serializers.FloatField()
+    # total_volume = serializers.FloatField()
