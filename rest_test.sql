@@ -11,7 +11,7 @@
  Target Server Version : 100422
  File Encoding         : 65001
 
- Date: 07/08/2022 22:07:06
+ Date: 08/08/2022 03:06:51
 */
 
 SET NAMES utf8mb4;
@@ -245,7 +245,7 @@ CREATE TABLE `django_migrations`  (
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `applied` datetime(6) NOT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 22 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 23 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of django_migrations
@@ -271,6 +271,7 @@ INSERT INTO `django_migrations` VALUES (18, 'authtoken', '0001_initial', '2022-0
 INSERT INTO `django_migrations` VALUES (19, 'authtoken', '0002_auto_20160226_1747', '2022-08-06 17:37:53.261765');
 INSERT INTO `django_migrations` VALUES (20, 'authtoken', '0003_tokenproxy', '2022-08-06 17:37:53.294732');
 INSERT INTO `django_migrations` VALUES (21, 'sessions', '0001_initial', '2022-08-06 17:37:53.742271');
+INSERT INTO `django_migrations` VALUES (22, 'send_data', '0001_initial', '2022-08-07 18:06:08.390135');
 
 -- ----------------------------
 -- Table structure for django_session
@@ -283,5 +284,118 @@ CREATE TABLE `django_session`  (
   PRIMARY KEY (`session_key`) USING BTREE,
   INDEX `django_session_expire_date_a5c62663`(`expire_date`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for send_data_holdings
+-- ----------------------------
+DROP TABLE IF EXISTS `send_data_holdings`;
+CREATE TABLE `send_data_holdings`  (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `volume` int(11) NOT NULL,
+  `bid_price` double NOT NULL,
+  `bought_on` date NOT NULL,
+  `stock_id` bigint(20) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `send_data_holdings_stock_id_0a316b0d_fk_send_data_stocks_id`(`stock_id`) USING BTREE,
+  INDEX `send_data_holdings_user_id_fc6b9bbd_fk_auth_user_id`(`user_id`) USING BTREE,
+  CONSTRAINT `send_data_holdings_stock_id_0a316b0d_fk_send_data_stocks_id` FOREIGN KEY (`stock_id`) REFERENCES `send_data_stocks` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `send_data_holdings_user_id_fc6b9bbd_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for send_data_market_day
+-- ----------------------------
+DROP TABLE IF EXISTS `send_data_market_day`;
+CREATE TABLE `send_data_market_day`  (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `day` int(11) NOT NULL,
+  `status` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for send_data_ohlcv
+-- ----------------------------
+DROP TABLE IF EXISTS `send_data_ohlcv`;
+CREATE TABLE `send_data_ohlcv`  (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `day` int(11) NOT NULL,
+  `open` double NOT NULL,
+  `high` double NOT NULL,
+  `low` double NOT NULL,
+  `close` double NOT NULL,
+  `volume` int(11) NOT NULL,
+  `market_id` bigint(20) NOT NULL,
+  `stock_id` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `send_data_ohlcv_market_id_ba0cf259_fk_send_data_market_day_id`(`market_id`) USING BTREE,
+  INDEX `send_data_ohlcv_stock_id_e82ecfb1_fk_send_data_stocks_id`(`stock_id`) USING BTREE,
+  CONSTRAINT `send_data_ohlcv_market_id_ba0cf259_fk_send_data_market_day_id` FOREIGN KEY (`market_id`) REFERENCES `send_data_market_day` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `send_data_ohlcv_stock_id_e82ecfb1_fk_send_data_stocks_id` FOREIGN KEY (`stock_id`) REFERENCES `send_data_stocks` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for send_data_orders
+-- ----------------------------
+DROP TABLE IF EXISTS `send_data_orders`;
+CREATE TABLE `send_data_orders`  (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `bid_price` double NOT NULL,
+  `type` varchar(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `created_on` datetime(6) NOT NULL,
+  `updated_on` datetime(6) NOT NULL,
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `bid_volume` int(11) NOT NULL,
+  `executed_volume` int(11) NOT NULL,
+  `stock_id` bigint(20) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `send_data_orders_stock_id_7895fc53_fk_send_data_stocks_id`(`stock_id`) USING BTREE,
+  INDEX `send_data_orders_user_id_a40a9992_fk_auth_user_id`(`user_id`) USING BTREE,
+  CONSTRAINT `send_data_orders_stock_id_7895fc53_fk_send_data_stocks_id` FOREIGN KEY (`stock_id`) REFERENCES `send_data_stocks` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `send_data_orders_user_id_a40a9992_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for send_data_sectors
+-- ----------------------------
+DROP TABLE IF EXISTS `send_data_sectors`;
+CREATE TABLE `send_data_sectors`  (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for send_data_stocks
+-- ----------------------------
+DROP TABLE IF EXISTS `send_data_stocks`;
+CREATE TABLE `send_data_stocks`  (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `name` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `total_volume` int(11) NOT NULL,
+  `unallocated` int(11) NOT NULL,
+  `price` double NOT NULL,
+  `sector_id` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `send_data_stocks_sector_id_0b07ca0f_fk_send_data_sectors_id`(`sector_id`) USING BTREE,
+  CONSTRAINT `send_data_stocks_sector_id_0b07ca0f_fk_send_data_sectors_id` FOREIGN KEY (`sector_id`) REFERENCES `send_data_sectors` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for send_data_users
+-- ----------------------------
+DROP TABLE IF EXISTS `send_data_users`;
+CREATE TABLE `send_data_users`  (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `available_funds` double NOT NULL,
+  `blocked_funds` double NOT NULL,
+  `user_id_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `user_id_id`(`user_id_id`) USING BTREE,
+  CONSTRAINT `send_data_users_user_id_id_398df4cd_fk_auth_user_id` FOREIGN KEY (`user_id_id`) REFERENCES `auth_user` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
 
 SET FOREIGN_KEY_CHECKS = 1;

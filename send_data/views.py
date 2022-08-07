@@ -1,3 +1,4 @@
+from asyncio.windows_events import NULL
 from urllib import response
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
@@ -48,6 +49,16 @@ class RegisterUserAPIView(generics.CreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
+class TokenDestroyView(APIView):
+    """
+    Use this endpoint to logout user (remove user authentication token).
+    """
+    def post(self, request):
+        token = Token.objects.get(key=self.request.META.get('HTTP_AUTHORIZATION', None))
+        token.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class SectorList(APIView):
     """
     List all sectors, or create a new sector.
@@ -59,10 +70,18 @@ class SectorList(APIView):
 
     def post(self, request, format=None):
         serializer = SectorSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if request.data['email'] and request.data['password']:
+            # try:
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+            #     return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
+            # except:
+            #     return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
+        elif request.data['email'] == NULL:
+            Response("'email' field is missing", status=status.HTTP_400_BAD_REQUEST)
+        elif request.data['password'] == NULL:
+            Response("'password' field is missing", status=status.HTTP_400_BAD_REQUEST)
 
 
 class SectorDetail(APIView):
@@ -231,11 +250,18 @@ class GetHolding(APIView):
         user_id = Token.objects.get(key=self.request.META.get('HTTP_AUTHORIZATION', None)).user_id
         data = Holdings.objects.filter(user=user_id).aggregate(investment=Sum('volume'), current_value=Sum('bid_price'))
         posessed = Holdings.objects.values('stock').annotate(avg_bid_price=Avg('bid_price'), total_volume=Sum('volume'))
+        posessed_data = []
         for each in posessed:
             name = Stocks.objects.get(pk=each['stock']).sector.name
-            each['name'] = name
+            new_row = {
+                'id': each['stock'],
+                'name': name,
+                'avg_bid_price': each['avg_bid_price'],
+                'total_volume': each['total_volume']
+            }
+            posessed_data.append(new_row)
         
-        data['stocks_posessed'] = posessed
+        data['stocks_posessed'] = posessed_data
         
         return Response(data)
 
@@ -265,7 +291,7 @@ class OpenMarket(APIView):
             serializer = MarketSerializer(market, data=data)
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response('You are not authorized for this.')

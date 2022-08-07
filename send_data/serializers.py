@@ -24,7 +24,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 #Serializer to Register User
 class RegisterSerializer(serializers.ModelSerializer):
-    email = serializers.CharField(
+    email = serializers.EmailField(
     required=True,
     validators=[UniqueValidator(queryset=User.objects.all())]
     )
@@ -49,21 +49,21 @@ class RegisterSerializer(serializers.ModelSerializer):
 class SectorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sectors
-        fields = '__all__'
+        fields = ['id', 'name', 'description']
 
 
 #Serializer for stock
 class StockSerializer(serializers.ModelSerializer):
     class Meta:
         model = Stocks
-        fields = ['name', 'sector', 'total_volume', 'unallocated', 'price']
+        fields = ['id', 'name', 'price', 'sector', 'unallocated', 'total_volume']
 
 
 #Serializer for order
 class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Orders
-        fields = '__all__'
+        fields = ["id", "stock", "user", "type", "bid_price", "bid_volume", "executed_volume", "status", "created_on", "updated_on"]
 
 
 #Serializer for market
@@ -77,7 +77,7 @@ class MarketSerializer(serializers.ModelSerializer):
 class OhlcvSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ohlcv
-        fields = '__all__'
+        fields = ['day', 'stock', 'open', 'low', 'high', 'close', 'volume']
 
 
 #Serializer for holding

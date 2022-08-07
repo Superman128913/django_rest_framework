@@ -41,6 +41,7 @@ class Market_day(models.Model):
 
 
 class Ohlcv(models.Model):
+    day = models.IntegerField()
     stock = models.ForeignKey(Stocks, on_delete=models.CASCADE)
     open = models.FloatField()
     high = models.FloatField()
@@ -55,8 +56,8 @@ class Orders(models.Model):
     stock = models.ForeignKey(Stocks, on_delete=models.CASCADE)
     bid_price = models.FloatField()
     type = models.CharField(max_length=4)
-    created_at = models.DateTimeField(auto_now=True)
-    updated_at = models.DateTimeField(auto_now_add=True)
+    created_on = models.DateTimeField(auto_now=True)
+    updated_on = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20)
     bid_volume = models.IntegerField()
     executed_volume = models.IntegerField()
