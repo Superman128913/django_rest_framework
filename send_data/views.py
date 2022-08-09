@@ -1,5 +1,5 @@
 from urllib import response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, BasePermission, SAFE_METHODS, IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .serializers import *
@@ -17,13 +17,24 @@ from djoser import signals, utils
 from djoser.compat import get_user_email
 from djoser.conf import settings
 
+
+
+class IsOwnerOrReadOnlyNote(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS:
+            return True
+
+        return obj.author == request.user
+
+
+
 # Class based view to Get User Details using Token Authentication
 class UserDetailAPI(APIView):
     authentication_classes = (TokenAuthentication,)
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
     def get(self,request,*args,**kwargs):
         try:
-            user_id = Token.objects.get(key=self.request.META.get('HTTP_AUTHORIZATION', None)).user_id
+            user_id = request.user.id
         except:            
             return Response({"detail":"Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
         user = MyUser.objects.get(id=user_id)
@@ -79,8 +90,11 @@ class TokenCreateView(utils.ActionViewMixin, generics.GenericAPIView):
         # self.request.user.name = self.request.data.username
         token = utils.login_user(self.request, serializer.user)
         token_serializer_class = settings.SERIALIZERS.token
+        returnData = {
+            'token': token_serializer_class(token).data['auth_token']
+        }
         return Response(
-            data=token_serializer_class(token).data, status=status.HTTP_200_OK
+            data=returnData, status=status.HTTP_200_OK
         )
 
 
@@ -120,6 +134,13 @@ class SectorDetail(APIView):
     """
     Retrieve, update or delete a sector instance.
     """
+    permission_classes = [
+        IsOwnerOrReadOnlyNote,
+    ]
+    authentication_classes = [
+        TokenAuthentication,
+    ]
+
     def get_object(self, pk):
         try:
             return Sectors.objects.get(pk=pk)
