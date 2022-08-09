@@ -48,7 +48,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 #Serializer for sector
 class SectorSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(required=False)
+    name = serializers.CharField(required=True)
     description = serializers.CharField(required=False)
     class Meta:
         model = Sectors
@@ -64,9 +64,11 @@ class StockSerializer(serializers.ModelSerializer):
 
 #Serializer for order
 class OrderSerializer(serializers.ModelSerializer):
+    created_at = serializers.DateTimeField(input_formats='%b %d %Y %H:%M:%S')
+    updated_at = serializers.DateTimeField(input_formats='%b %d %Y %H:%M:%S')
     class Meta:
         model = Orders
-        fields = ["id", "stock", "user", "type", "bid_price", "bid_volume", "executed_volume", "status", "created_on", "updated_on"]
+        fields = ["id", "user", "stock", "bid_price", "type", "status", "bid_volume", "executed_volume", "created_at", "updated_at"]
 
 
 #Serializer for market
