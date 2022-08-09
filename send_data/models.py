@@ -4,10 +4,11 @@ from django.contrib.auth.models import AbstractUser
 
 class MyUser(AbstractUser):
     username = None
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
+    email = models.EmailField(unique=True)
     
-    USERNAME_FIELD = 'name'
-    QEQUIRED_FIELDS = ['name', 'email', 'password']
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['name', 'password']
     
     def __str__(self):
         return self.name

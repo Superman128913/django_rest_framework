@@ -1,5 +1,5 @@
 from urllib import response
-from rest_framework.permissions import AllowAny, BasePermission, SAFE_METHODS, IsAuthenticated
+from rest_framework.permissions import AllowAny, BasePermission, SAFE_METHODS, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .serializers import *
@@ -56,18 +56,20 @@ class RegisterUserAPIView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = RegisterSerializer
     def post(self, request, *args, **kwargs):
-        params = request.data
-        keys = params.keys()
-        if 'email' not in keys or params['email'] == '':
-            return Response({"email":["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
-        elif 'password' not in keys or params['password'] == '':
-            return Response({"password":["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        # params = request.data
+        # keys = params.keys()
+        # return_error = {}
+        # if 'email' not in keys or params['email'] == '':
+        #     return_error.apppend({"email":["This field is required."]})
+        #     return Response({"email":["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        # elif 'password' not in keys or params['password'] == '':
+        #     return Response({"password":["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid(raise_exception=False):
+        if serializer.is_valid(raise_exception=True):
             obj = serializer.save()
-        else:
-            return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
+        # else:
+        #     return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
         headers = self.get_success_headers(serializer.data)
         detail = Users(user_id=obj, available_funds=0, blocked_funds=0)
         detail.save()
@@ -103,7 +105,13 @@ class TokenDestroyView(APIView):
     Use this endpoint to logout user (remove user authentication token).
     """
 
-    permission_classes = settings.PERMISSIONS.token_destroy
+    permission_classes = [
+        IsAuthenticated,
+    ]
+    authentication_classes = [
+        TokenAuthentication,
+    ]
+    # permission_classes = settings.PERMISSIONS.token_destroy
 
     def post(self, request):
         utils.logout_user(request)
@@ -114,6 +122,12 @@ class SectorList(APIView):
     """
     List all sectors, or create a new sector.
     """
+    permission_classes = [
+        IsAuthenticatedOrReadOnly,
+    ]
+    authentication_classes = [
+        TokenAuthentication,
+    ]
     def get(self, request, format=None):
         sector = Sectors.objects.all()
         serializer = SectorSerializer(sector, many=True)
@@ -121,13 +135,9 @@ class SectorList(APIView):
 
     def post(self, request, format=None):
         serializer = SectorSerializer(data=request.data)
-        try:
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
-        except:
-            return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class SectorDetail(APIView):
@@ -135,7 +145,7 @@ class SectorDetail(APIView):
     Retrieve, update or delete a sector instance.
     """
     permission_classes = [
-        IsOwnerOrReadOnlyNote,
+        IsAuthenticatedOrReadOnly,
     ]
     authentication_classes = [
         TokenAuthentication,
