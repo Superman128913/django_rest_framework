@@ -217,9 +217,10 @@ class StockDetail(APIView):
     def get(self, request, pk, format=None):
         Stock = self.get_object(pk)
         serializer = StockSerializer(Stock)
-        value = serializer.data['price']
-        serializer.data['price'] = '{:.2f}'.format(value)
-        return Response(serializer.data)
+        returndata = serializer.data
+        value = returndata['price']
+        returndata['price'] = '{:.2f}'.format(value)
+        return Response(returndata)
 
 
 class OrderList(APIView):
