@@ -88,12 +88,11 @@ class TokenDestroyView(APIView):
     """
     Use this endpoint to logout user (remove user authentication token).
     """
+
+    permission_classes = settings.PERMISSIONS.token_destroy
+
     def post(self, request):
-        try:
-            token = Token.objects.get(key=self.request.META.get('HTTP_AUTHORIZATION', None))
-            token.delete()
-        except:            
-            return Response({"detail":"Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+        utils.logout_user(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
