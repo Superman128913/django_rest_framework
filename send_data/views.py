@@ -175,6 +175,12 @@ class StockList(APIView):
     """
     List all stocks, or create a new stock.
     """
+    permission_classes = [
+        IsAuthenticatedOrReadOnly,
+    ]
+    authentication_classes = [
+        TokenAuthentication,
+    ]
     def get(self, request, format=None):
         stock = Stocks.objects.all()
         serializer = StockSerializer(stock, many=True)
@@ -182,16 +188,21 @@ class StockList(APIView):
 
     def post(self, request, format=None):
         serializer = StockSerializer(data=request.data)
-        if serializer.is_valid():
+        if serializer.is_valid(raise_exception=True):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class StockDetail(APIView):
     """
     Retrieve, update or delete a stock instance.
     """
+    permission_classes = [
+        IsAuthenticatedOrReadOnly,
+    ]
+    authentication_classes = [
+        TokenAuthentication,
+    ]
     def get_object(self, pk):
         try:
             return Stocks.objects.get(pk=pk)
@@ -208,6 +219,12 @@ class OrderList(APIView):
     """
     List all orders, or create a new order.
     """
+    permission_classes = [
+        IsAuthenticatedOrReadOnly,
+    ]
+    authentication_classes = [
+        TokenAuthentication,
+    ]
     def get(self, request, format=None):
         Order = Orders.objects.all()
         serializer = OrderSerializer(Order, many=True)
@@ -246,6 +263,12 @@ class OrderDetail(APIView):
     """
     Retrieve a order instance.
     """
+    permission_classes = [
+        IsAuthenticatedOrReadOnly,
+    ]
+    authentication_classes = [
+        TokenAuthentication,
+    ]
     def get_object(self, pk):
         try:
             return Orders.objects.get(pk=pk)
@@ -262,6 +285,12 @@ class OrderDelete(APIView):
     """
     Delete a order instance.
     """
+    permission_classes = [
+        IsAuthenticatedOrReadOnly,
+    ]
+    authentication_classes = [
+        TokenAuthentication,
+    ]
     def get_object(self, pk):
         try:
             return Orders.objects.get(pk=pk)
@@ -275,6 +304,12 @@ class OrderDelete(APIView):
 
 
 class OrderMatch(APIView):
+    permission_classes = [
+        IsAuthenticatedOrReadOnly,
+    ]
+    authentication_classes = [
+        TokenAuthentication,
+    ]
     def post(self, request, format=None):
         user_id = Token.objects.get(key=self.request.META.get('HTTP_AUTHORIZATION', None)).user_id
         orders = Orders.objects.filter(user=user_id).all()
@@ -295,8 +330,9 @@ class OrderMatch(APIView):
                         'executed_volume': 0
                     }
                     serializer = OrderSerializer(data=new_order)
-                    if serializer.is_valid():
+                    if serializer.is_valid(raise_exception=True):
                         serializer.save()
+                        return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
                 buy_obj = Orders.objects.all().exclude(user=user_id).order_by('bid_price')[0]
                 buy_obj.execution_volume = order.bid_volume
@@ -342,6 +378,12 @@ class OhlcvDetail(APIView):
 
 
 class OpenMarket(APIView):
+    permission_classes = [
+        IsAuthenticated,
+    ]
+    authentication_classes = [
+        TokenAuthentication,
+    ]
     def post(self, request, format=None):
         user_id = Token.objects.get(key=self.request.META.get('HTTP_AUTHORIZATION', None)).user_id
         if(user_id):
@@ -352,15 +394,20 @@ class OpenMarket(APIView):
                 "day": day
                 }
             serializer = MarketSerializer(market, data=data)
-            if serializer.is_valid():
+            if serializer.is_valid(raise_exception=True):
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response('You are not authorized for this.')
 
 
 class CloseMarket(APIView):
+    permission_classes = [
+        IsAuthenticated,
+    ]
+    authentication_classes = [
+        TokenAuthentication,
+    ]
     def post(self, request, format=None):
         user_id = Token.objects.get(key=self.request.META.get('HTTP_AUTHORIZATION', None)).user_id
         if(user_id):
@@ -371,9 +418,8 @@ class CloseMarket(APIView):
                 "day": day
                 }
             serializer = MarketSerializer(market, data=data)
-            if serializer.is_valid():
+            if serializer.is_valid(raise_exception=True):
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response('You are not authorized for this.')
