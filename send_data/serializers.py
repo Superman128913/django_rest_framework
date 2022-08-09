@@ -55,6 +55,15 @@ class SectorSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description']
 
 
+#Serializer for sector
+class SectorPatchSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(required=False)
+    description = serializers.CharField(required=False)
+    class Meta:
+        model = Sectors
+        fields = ['id', 'name', 'description']
+
+
 #Serializer for stock
 class StockSerializer(serializers.ModelSerializer):
     class Meta:

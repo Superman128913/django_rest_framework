@@ -163,7 +163,7 @@ class SectorDetail(APIView):
 
     def patch(self, request, pk, format=None):
         sector = self.get_object(pk)
-        serializer = SectorSerializer(sector, data=request.data)
+        serializer = SectorPatchSerializer(sector, data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
             return Response(serializer.data)
@@ -257,7 +257,11 @@ class OrderList(APIView):
         else:
             sufficient_stock = float(newPost['bid_volume'])
             available_stock = Holdings.objects.get(user_id=user_id, stock=newPost['stock']).volume
-            if available_stock < sufficient_stock:
+            if available_stock:
+                if available_stock < sufficient_stock:
+                    err = {"non_field_errors":["Insufficient Stock Holdings"]}
+                    return Response(err, status=status.HTTP_400_BAD_REQUEST)
+            else:
                 err = {"non_field_errors":["Insufficient Stock Holdings"]}
                 return Response(err, status=status.HTTP_400_BAD_REQUEST)
 
