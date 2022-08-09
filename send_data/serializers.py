@@ -1,9 +1,19 @@
 from dataclasses import fields
+from typing_extensions import Required
 from rest_framework import serializers
 # from django.contrib.auth.models import User
 from rest_framework.validators import UniqueValidator
 from django.contrib.auth.password_validation import validate_password
 from .models import *
+
+def validate_decimals(value):
+    try:
+        return round(float(value), 2)
+    except:
+        raise ValidationError(
+            _('%(value)s is not an integer or a float  number'),
+            params={'value': value},
+        )
 
 
 #Serializer to Get user info
@@ -74,8 +84,8 @@ class StockSerializer(serializers.ModelSerializer):
 
 #Serializer for order
 class OrderSerializer(serializers.ModelSerializer):
-    created_at = serializers.DateTimeField(input_formats='%b %d %Y %H:%M:%S')
-    updated_at = serializers.DateTimeField(input_formats='%b %d %Y %H:%M:%S')
+    created_at = serializers.DateTimeField(input_formats='%b %d %Y %H:%M:%S', Required=False)
+    updated_at = serializers.DateTimeField(input_formats='%b %d %Y %H:%M:%S', Required=False)
     class Meta:
         model = Orders
         fields = ["id", "user", "stock", "bid_price", "type", "status", "bid_volume", "executed_volume", "created_at", "updated_at"]

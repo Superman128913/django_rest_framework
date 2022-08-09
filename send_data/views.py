@@ -44,8 +44,8 @@ class UserDetailAPI(APIView):
             "id": serializer1.data['id'],
             "name": serializer1.data['name'],
             "email": serializer1.data['email'],
-            "available_funds": serializer2.data['available_funds'],
-            "blocked_funds": serializer2.data['blocked_funds'],
+            "available_funds": '{:.2f}'.format(serializer2.data['available_funds']),
+            "blocked_funds": '{:.2f}'.format(serializer2.data['blocked_funds']),
         }
         return Response(returnData)
 
