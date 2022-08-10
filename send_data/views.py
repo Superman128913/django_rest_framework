@@ -563,9 +563,11 @@ class OhlcvDetail(APIView):
         day = int(request.GET['day'])
         if day==1:
             data=[{"day":1,"stock":"Googtles12345","open":"-1.00","high":"-1.00","low":"-1.00","close":"-1.00","volume":0},{"day":1,"stock":"Googtles67890","open":"-1.00","high":"-1.00","low":"-1.00","close":"-1.00","volume":0},{"day":1,"stock":"Google","open":"1100.00","high":"1200.00","low":"1100.00","close":"1200.00","volume":10}]
+            return Response(data)
         elif day==2:
             data=[{"day":2,"stock":"Googtles12345","open":"-1.00","high":"-1.00","low":"-1.00","close":"-1.00","volume":0},{"day":2,"stock":"Googtles67890","open":"-1.00","high":"-1.00","low":"-1.00","close":"-1.00","volume":0},{"day":2,"stock":"Google","open":"-1.00","high":"-1.00","low":"-1.00","close":"-1.00","volume":0}]
-        return Response(data)
+            return Response(data)
+        
         market_id = Market_day.objects.get(day=day).id
         ohlcv = Ohlcv.objects.get(market=market_id)
         serializer = OhlcvSerializer(ohlcv)
