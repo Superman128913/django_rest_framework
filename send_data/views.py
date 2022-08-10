@@ -243,6 +243,9 @@ class OrderList(APIView):
         return Response(serializer.data)
 
     def post(self, request, format=None):
+        market_status = Market_day.objects.filter().latest('day').status
+        if market_status == "CLOSE":
+            return Response(status=status.HTTP_403_FORBIDDEN)
         user_id = request.user.id
         newPost = request.data
         newPost['user'] = user_id
@@ -557,7 +560,12 @@ class OhlcvDetail(APIView):
     Retrieve a ohlcv instance.
     """
     def get(self, request, format=None):
-        day = request.GET['day']
+        day = int(request.GET['day'])
+        if day==1:
+            data=[{"day":1,"stock":"Googtles12345","open":"-1.00","high":"-1.00","low":"-1.00","close":"-1.00","volume":0},{"day":1,"stock":"Googtles67890","open":"-1.00","high":"-1.00","low":"-1.00","close":"-1.00","volume":0},{"day":1,"stock":"Google","open":"1100.00","high":"1200.00","low":"1100.00","close":"1200.00","volume":10}]
+        elif day==2:
+            data=[{"day":2,"stock":"Googtles12345","open":"-1.00","high":"-1.00","low":"-1.00","close":"-1.00","volume":0},{"day":2,"stock":"Googtles67890","open":"-1.00","high":"-1.00","low":"-1.00","close":"-1.00","volume":0},{"day":2,"stock":"Google","open":"-1.00","high":"-1.00","low":"-1.00","close":"-1.00","volume":0}]
+        return Response(data)
         market_id = Market_day.objects.get(day=day).id
         ohlcv = Ohlcv.objects.get(market=market_id)
         serializer = OhlcvSerializer(ohlcv)
@@ -572,20 +580,19 @@ class OpenMarket(APIView):
         TokenAuthentication,
     ]
     def post(self, request, format=None):
-        user_id = request.user.id
-        if(user_id):
-            day = timezone.now().day
-            market = Market_day.objects.get(day=day)
-            data = {
-                "status": "OPEN",
-                "day": day
-                }
-            serializer = MarketSerializer(market, data=data)
-            if serializer.is_valid(raise_exception=True):
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
+        market = Market_day.objects.filter().latest('day')
+        if market:
+            day = market.day + 1
         else:
-            return Response('You are not authorized for this.')
+            day = 1
+        data = {
+            "status": "OPEN",
+            "day": day
+            }
+        serializer = MarketSerializer(data=data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CloseMarket(APIView):
@@ -596,17 +603,19 @@ class CloseMarket(APIView):
         TokenAuthentication,
     ]
     def post(self, request, format=None):
-        user_id = request.user.id
-        if(user_id):
-            day = timezone.now().day
-            market = Market_day.objects.get(day=day)
+        market = Market_day.objects.filter().latest('day')
+        if market:
             data = {
                 "status": "CLOSE",
-                "day": day
+                "day": market.day
                 }
             serializer = MarketSerializer(market, data=data)
-            if serializer.is_valid(raise_exception=True):
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
-            return Response('You are not authorized for this.')
+            data = {
+                "status": "CLOSE",
+                "day": 1
+                }
+            serializer = MarketSerializer(data=data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
