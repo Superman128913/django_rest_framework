@@ -228,14 +228,18 @@ class OrderList(APIView):
     List all orders, or create a new order.
     """
     permission_classes = [
-        IsAuthenticatedOrReadOnly,
+        IsAuthenticated,
     ]
     authentication_classes = [
         TokenAuthentication,
     ]
     def get(self, request, format=None):
-        Order = Orders.objects.all()
+        user_id = request.user.id
+        Order = Orders.objects.filter(user=user_id)
         serializer = OrderSerializer(Order, many=True)
+        for each in serializer.data:
+            value = each['bid_price']
+            each['bid_price'] = '{:.2f}'.format(value)
         return Response(serializer.data)
 
     def post(self, request, format=None):
@@ -262,18 +266,22 @@ class OrderList(APIView):
                 userSerializer.save()
         else:
             sufficient_stock = float(newPost['bid_volume'])
-            available_stock = Holdings.objects.get(user_id=user_id, stock=newPost['stock']).volume
-            if available_stock:
-                if available_stock < sufficient_stock:
-                    err = {"non_field_errors":["Insufficient Stock Holdings"]}
-                    return Response(err, status=status.HTTP_400_BAD_REQUEST)
-            else:
+            try:
+                available_stock = Holdings.objects.get(user_id=user_id, stock=newPost['stock']).volume
+                if available_stock:
+                    if available_stock < sufficient_stock:
+                        err = {"non_field_errors":["Insufficient Stock Holdings"]}
+                        return Response(err, status=status.HTTP_400_BAD_REQUEST)
+            except:
                 err = {"non_field_errors":["Insufficient Stock Holdings"]}
                 return Response(err, status=status.HTTP_400_BAD_REQUEST)
 
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            returndata = serializer.data
+            value = returndata['bid_price']
+            returndata['bid_price'] = '{:.2f}'.format(value)
+            return Response(returndata, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -282,7 +290,7 @@ class OrderDetail(APIView):
     Retrieve a order instance.
     """
     permission_classes = [
-        IsAuthenticatedOrReadOnly,
+        IsAuthenticated,
     ]
     authentication_classes = [
         TokenAuthentication,
@@ -323,14 +331,15 @@ class OrderDelete(APIView):
 
 class OrderMatch(APIView):
     permission_classes = [
-        IsAuthenticatedOrReadOnly,
+        IsAuthenticated,
     ]
     authentication_classes = [
         TokenAuthentication,
     ]
     def post(self, request, format=None):
         user_id = request.user.id
-        orders = Orders.objects.filter(user=user_id).all()
+        orders = Orders.objects.filter(user=user_id).all().exclude(status="COMPLETED")
+        user = Users.objects.get(pk=user_id)
         for order in orders:
             if(order.type == 'SELL'):
                 current_volume = Holdings.objects.filter(user=user_id).aggregate(investment=Sum('volume'))['investment']
@@ -352,13 +361,103 @@ class OrderMatch(APIView):
                         serializer.save()
                         return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
-                buy_obj = Orders.objects.all().exclude(user=user_id).order_by('bid_price')[0]
-                buy_obj.execution_volume = order.bid_volume
-                buy_obj.save()
+                stock = Stocks.objects.get(pk=order.stock.id)
+                remain_volume = order.bid_volume
+                if stock.price > order.bid_price:
+                    pass
+                elif stock.unallocated > remain_volume:
+                    withdrow = order.bid_price * remain_volume
+                    if user.available_funds < withdrow:
+                        break
+                    user.available_funds -= withdrow
+                    user.blocked_funds += withdrow
+                    order.executed_volume += remain_volume
+                    stock.unallocated -= remain_volume
+                    stock.price = order.bid_price
+                    stock.save()
+                    remain_volume = 0
+                else:
+                    withdrow = order.bid_price * stock.unallocated
+                    if user.available_funds < withdrow:
+                        break
+                    user.available_funds -= withdrow
+                    user.blocked_funds += withdrow
+                    remain_volume -= stock.unallocated
+                    stock.unallocated = 0
+                    stock.price = order.bid_price
+                    stock.save()
+                if remain_volume > 0:
+                    sell_orders1 = Orders.objects.filter(stock=order.stock, type="SELL", created_at__lte=order.created_at).exclude(user=user_id).order_by('bid_price')
+                    sell_orders2 = Orders.objects.filter(stock=order.stock, type="SELL", created_at__gte=order.created_at).exclude(user=user_id).order_by('bid_price')
+                    for sell_order in sell_orders1:
+                        if sell_order.bid_price > order.bid_price:
+                            continue
+                        if remain_volume == 0:
+                            break
+                        available_volume = sell_order.bid_volume - sell_order.executed_volume
+                        if available_volume >= remain_volume:
+                            withdrow = sell_order.bid_price * remain_volume
+                            if user.available_funds < withdrow:
+                                break
+                            user.available_funds -= withdrow
+                            user.blocked_funds += withdrow
+                            order.executed_volume += remain_volume
+                            sell_order.executed_volume += remain_volume
+                            sell_order.status = "COMPLETED"
+                            sell_order.save()
+                            remain_volume = 0
+                            break
+                        else:
+                            withdrow = sell_order.bid_price * available_volume
+                            if user.available_funds < withdrow:
+                                break
+                            user.available_funds -= withdrow
+                            user.blocked_funds += withdrow
+                            order.executed_volume += available_volume
+                            remain_volume -= available_volume
+                            sell_order.executed_volume += available_volume
+                            sell_order.status = "COMPLETED"
+                            sell_order.save()
+                            continue
+
+                    for sell_order in sell_orders2:
+                        if sell_order.bid_price > order.bid_price:
+                            continue
+                        if remain_volume == 0:
+                            break
+                        available_volume = sell_order.bid_volume - sell_order.executed_volume
+                        if available_volume >= remain_volume:
+                            withdrow = order.bid_price * remain_volume
+                            if user.available_funds < withdrow:
+                                break
+                            user.available_funds -= withdrow
+                            user.blocked_funds += withdrow
+                            order.executed_volume += remain_volume
+                            sell_order.executed_volume += remain_volume
+                            sell_order.status = "COMPLETED"
+                            sell_order.save()
+                            remain_volume = 0
+                            break
+                        else:
+                            withdrow = order.bid_price * available_volume
+                            if user.available_funds < withdrow:
+                                break
+                            user.available_funds -= withdrow
+                            user.blocked_funds += withdrow
+                            order.executed_volume += available_volume
+                            remain_volume -= available_volume
+                            sell_order.executed_volume += available_volume
+                            sell_order.status = "COMPLETED"
+                            sell_order.save()
+                            continue
+                if remain_volume==0:
+                    order.status = "COMPLETED"
+                order.save()
+                user.save()
         
         all_order = Orders.objects.filter(user=user_id).all()
         serializer = OrderSerializer(all_order, many=True)
-        return Response(serializer.data)
+        return Response({"message":"Orders Executed Successfully!"})
                 
 
 
