@@ -243,9 +243,12 @@ class OrderList(APIView):
         return Response(serializer.data)
 
     def post(self, request, format=None):
-        # market_status = Market_day.objects.filter().latest('day').status
-        # if market_status == "CLOSE":
-            # return Response(status=status.HTTP_403_FORBIDDEN)
+		try:
+	        market_status = Market_day.objects.filter().latest('day').status
+	        if market_status == "CLOSE":
+	            return Response(status=status.HTTP_403_FORBIDDEN)
+		except:
+			pass
         user_id = request.user.id
         newPost = request.data
         newPost['user'] = user_id
@@ -582,11 +585,14 @@ class OpenMarket(APIView):
         TokenAuthentication,
     ]
     def post(self, request, format=None):
-        market = Market_day.objects.filter().latest('day')
-        if market:
-            day = market.day + 1
-        else:
-            day = 1
+		try:
+	        market = Market_day.objects.filter().latest('day')
+	        if market:
+	            day = market.day + 1
+	        else:
+	            day = 1
+		except:
+			day = 1
         data = {
             "status": "OPEN",
             "day": day
@@ -605,14 +611,21 @@ class CloseMarket(APIView):
         TokenAuthentication,
     ]
     def post(self, request, format=None):
-        market = Market_day.objects.filter().latest('day')
-        if market:
-            data = {
-                "status": "CLOSE",
-                "day": market.day
-                }
-            serializer = MarketSerializer(market, data=data)
-        else:
+		try:
+	        market = Market_day.objects.filter().latest('day')
+	        if market:
+	            data = {
+	                "status": "CLOSE",
+	                "day": market.day
+	                }
+	            serializer = MarketSerializer(market, data=data)
+	        else:
+	            data = {
+	                "status": "CLOSE",
+	                "day": 1
+	                }
+	            serializer = MarketSerializer(data=data)
+		except:
             data = {
                 "status": "CLOSE",
                 "day": 1
