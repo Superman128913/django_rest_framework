@@ -257,13 +257,13 @@ class OrderList(APIView):
             if available_fund < sufficient_fund:
                 err = {"non_field_errors":["Insufficient Wallet Balance"]}
                 return Response(err, status=status.HTTP_400_BAD_REQUEST)
-            new_data = {
-                "available_funds": available_fund - sufficient_fund,
-                "blocked_funds": userdata.blocked_funds + sufficient_fund
-            }
-            userSerializer = UserDetailSerializer(userdata, data=new_data)
-            if userSerializer.is_valid(raise_exception=True):
-                userSerializer.save()
+            # new_data = {
+            #     "available_funds": available_fund - sufficient_fund,
+            #     "blocked_funds": userdata.blocked_funds + sufficient_fund
+            # }
+            # userSerializer = UserDetailSerializer(userdata, data=new_data)
+            # if userSerializer.is_valid(raise_exception=True):
+            #     userSerializer.save()
         else:
             sufficient_stock = float(newPost['bid_volume'])
             try:
@@ -339,9 +339,11 @@ class OrderMatch(APIView):
     def post(self, request, format=None):
         user_id = request.user.id
         orders = Orders.objects.filter(user=user_id).all().exclude(status="COMPLETED")
+        myUser = MyUser.objects.get(pk=user_id)
         user = Users.objects.get(pk=user_id)
         for order in orders:
             if(order.type == 'SELL'):
+                continue
                 current_volume = Holdings.objects.filter(user=user_id).aggregate(investment=Sum('volume'))['investment']
                 if current_volume > order.bid_volume:
                     order.executed_volume = order.bid_volume
@@ -363,100 +365,168 @@ class OrderMatch(APIView):
             else:
                 stock = Stocks.objects.get(pk=order.stock.id)
                 remain_volume = order.bid_volume
-                if stock.price > order.bid_price:
-                    pass
-                elif stock.unallocated > remain_volume:
-                    withdrow = order.bid_price * remain_volume
-                    if user.available_funds < withdrow:
-                        break
-                    user.available_funds -= withdrow
-                    user.blocked_funds += withdrow
-                    order.executed_volume += remain_volume
-                    stock.unallocated -= remain_volume
-                    stock.price = order.bid_price
-                    stock.save()
-                    remain_volume = 0
-                else:
-                    withdrow = order.bid_price * stock.unallocated
-                    if user.available_funds < withdrow:
-                        break
-                    user.available_funds -= withdrow
-                    user.blocked_funds += withdrow
-                    remain_volume -= stock.unallocated
-                    stock.unallocated = 0
-                    stock.price = order.bid_price
-                    stock.save()
-                if remain_volume > 0:
-                    sell_orders1 = Orders.objects.filter(stock=order.stock, type="SELL", created_at__lte=order.created_at).exclude(user=user_id).order_by('bid_price')
-                    sell_orders2 = Orders.objects.filter(stock=order.stock, type="SELL", created_at__gte=order.created_at).exclude(user=user_id).order_by('bid_price')
-                    for sell_order in sell_orders1:
-                        if sell_order.bid_price > order.bid_price:
-                            continue
-                        if remain_volume == 0:
-                            break
+                while(remain_volume > 0):
+                    # check the lowest price
+                    lowest_sell_order = Orders.objects.filter(stock=order.stock, type="SELL", created_at__gte=order.created_at, bid_price__lte=order.bid_price).exclude(user=user_id).order_by('bid_price')
+                    # if exist
+                    for sell_order in lowest_sell_order:
+                        price = sell_order.bid_price
                         available_volume = sell_order.bid_volume - sell_order.executed_volume
-                        if available_volume >= remain_volume:
-                            withdrow = sell_order.bid_price * remain_volume
-                            if user.available_funds < withdrow:
-                                break
-                            user.available_funds -= withdrow
-                            user.blocked_funds += withdrow
-                            order.executed_volume += remain_volume
-                            sell_order.executed_volume += remain_volume
-                            sell_order.status = "COMPLETED"
-                            sell_order.save()
-                            remain_volume = 0
-                            break
-                        else:
-                            withdrow = sell_order.bid_price * available_volume
-                            if user.available_funds < withdrow:
-                                break
-                            user.available_funds -= withdrow
-                            user.blocked_funds += withdrow
-                            order.executed_volume += available_volume
-                            remain_volume -= available_volume
-                            sell_order.executed_volume += available_volume
-                            sell_order.status = "COMPLETED"
-                            sell_order.save()
-                            continue
 
-                    for sell_order in sell_orders2:
-                        if sell_order.bid_price > order.bid_price:
-                            continue
+                        if available_volume >= remain_volume:
+                            execute_volume = remain_volume
+                            status = "COMPLETED"
+                        else:
+                            execute_volume = available_volume
+                            status = "PENDING"
+
+                        withdrow = price * execute_volume
+                        if user.available_funds < withdrow:
+                            break
+                        user.available_funds -= withdrow
+                        # user.blocked_funds += withdrow
+                        new_holding = Holdings(user=myUser, stock=order.stock, volume=execute_volume, bid_price=price)
+                        new_holding.save()
+                        order.executed_volume += execute_volume
+
+                        sell_order.executed_volume += execute_volume
+                        sell_order.status = status
+                        sell_order.save()
+
+                        remain_volume -= execute_volume
                         if remain_volume == 0:
                             break
-                        available_volume = sell_order.bid_volume - sell_order.executed_volume
-                        if available_volume >= remain_volume:
-                            withdrow = order.bid_price * remain_volume
+                    if remain_volume == 0:
+                        break
+
+                    if stock.price > order.bid_price:
+                        #check the lower sell order
+                        lower_sell_order = Orders.objects.filter(stock=order.stock, type="SELL", created_at__lte=order.created_at, bid_price__lte=order.bid_price).exclude(user=user_id).order_by('bid_price')
+                        # if exist
+                        for sell_order in lower_sell_order:
+                            price = sell_order.bid_price
+                            available_volume = sell_order.bid_volume - sell_order.executed_volume
+
+                            if available_volume >= remain_volume:
+                                execute_volume = remain_volume
+                                status = "COMPLETED"
+                            else:
+                                execute_volume = available_volume
+                                status = "PENDING"
+
+                            withdrow = price * execute_volume
                             if user.available_funds < withdrow:
                                 break
                             user.available_funds -= withdrow
-                            user.blocked_funds += withdrow
-                            order.executed_volume += remain_volume
-                            sell_order.executed_volume += remain_volume
-                            sell_order.status = "COMPLETED"
+                            # user.blocked_funds += withdrow
+                            new_holding = Holdings(user=myUser, stock=order.stock, volume=execute_volume, bid_price=price)
+                            new_holding.save()
+                            order.executed_volume += execute_volume
+
+                            sell_order.executed_volume += execute_volume
+                            sell_order.status = status
                             sell_order.save()
-                            remain_volume = 0
+
+                            remain_volume -= execute_volume
+                            if remain_volume == 0:
+                                break
+                    else:
+                        #check the lower sell order
+                        lower_sell_order = Orders.objects.filter(stock=order.stock, type="SELL", created_at__lte=order.created_at, bid_price__lte=stock.price).exclude(user=user_id).order_by('bid_price')
+                        # if exist
+                        for sell_order in lower_sell_order:
+                            price = order.bid_price
+                            available_volume = sell_order.bid_volume - sell_order.executed_volume
+
+                            if available_volume >= remain_volume:
+                                execute_volume = remain_volume
+                                status = "COMPLETED"
+                            else:
+                                execute_volume = available_volume
+                                status = "PENDING"
+
+                            withdrow = price * execute_volume
+                            if user.available_funds < withdrow:
+                                break
+                            user.available_funds -= withdrow
+                            # user.blocked_funds += withdrow
+                            new_holding = Holdings(user=myUser, stock=order.stock, volume=execute_volume, bid_price=price)
+                            new_holding.save()
+                            order.executed_volume += execute_volume
+
+                            sell_order.executed_volume += execute_volume
+                            sell_order.status = status
+                            sell_order.save()
+
+                            remain_volume -= execute_volume
+                            if remain_volume == 0:
+                                break
+                        if remain_volume == 0:
                             break
+
+                        # check stock                        
+                        price = order.bid_price
+                        available_volume = stock.unallocated
+
+                        if available_volume >= remain_volume:
+                            execute_volume = remain_volume
                         else:
-                            withdrow = order.bid_price * available_volume
+                            execute_volume = available_volume
+
+                        withdrow = price * execute_volume
+                        if user.available_funds < withdrow:
+                            break
+                        user.available_funds -= withdrow
+                        # user.blocked_funds += withdrow
+                        new_holding = Holdings(user=myUser, stock=order.stock, volume=execute_volume, bid_price=price)
+                        new_holding.save()
+                        order.executed_volume += execute_volume
+
+                        stock.unallocated -= execute_volume
+                        stock.price = price
+                        stock.save()
+
+                        remain_volume -= execute_volume
+                        if remain_volume == 0:
+                            break
+
+                        # check upper sell order
+                        
+                        #check the lower sell order
+                        upper_sell_order = Orders.objects.filter(stock=order.stock, type="SELL", created_at__lte=order.created_at, bid_price__gte=stock.price, bid_price_lte=order.bid_price).exclude(user=user_id).order_by('bid_price')
+                        # if exist
+                        for sell_order in upper_sell_order:
+                            price = order.bid_price
+                            available_volume = sell_order.bid_volume - sell_order.executed_volume
+
+                            if available_volume >= remain_volume:
+                                execute_volume = remain_volume
+                                status = "COMPLETED"
+                            else:
+                                execute_volume = available_volume
+                                status = "PENDING"
+
+                            withdrow = price * execute_volume
                             if user.available_funds < withdrow:
                                 break
                             user.available_funds -= withdrow
-                            user.blocked_funds += withdrow
-                            order.executed_volume += available_volume
-                            remain_volume -= available_volume
-                            sell_order.executed_volume += available_volume
-                            sell_order.status = "COMPLETED"
+                            # user.blocked_funds += withdrow
+                            new_holding = Holdings(user=myUser, stock=order.stock, volume=execute_volume, bid_price=price)
+                            new_holding.save()
+                            order.executed_volume += execute_volume
+
+                            sell_order.executed_volume += execute_volume
+                            sell_order.status = status
                             sell_order.save()
-                            continue
-                if remain_volume==0:
-                    order.status = "COMPLETED"
-                order.save()
-                user.save()
-        
-        all_order = Orders.objects.filter(user=user_id).all()
-        serializer = OrderSerializer(all_order, many=True)
+
+                            remain_volume -= execute_volume
+                            if remain_volume == 0:
+                                break
+                    break
+            if remain_volume == 0:
+                order.status = "COMPLETED"
+            order.save()
+        user.save()
         return Response({"message":"Orders Executed Successfully!"})
                 
 
