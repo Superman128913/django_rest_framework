@@ -243,9 +243,9 @@ class OrderList(APIView):
         return Response(serializer.data)
 
     def post(self, request, format=None):
-        market_status = Market_day.objects.filter().latest('day').status
-        if market_status == "CLOSE":
-            return Response(status=status.HTTP_403_FORBIDDEN)
+        # market_status = Market_day.objects.filter().latest('day').status
+        # if market_status == "CLOSE":
+            # return Response(status=status.HTTP_403_FORBIDDEN)
         user_id = request.user.id
         newPost = request.data
         newPost['user'] = user_id
