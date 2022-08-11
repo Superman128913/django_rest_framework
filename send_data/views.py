@@ -464,7 +464,6 @@ class GetHolding(APIView):
         current_value = 0
         posessed_data = []
         for each in possessed:
-            print(each)
             stock = Stocks.objects.get(pk=each['stock'])
             new_row = {
                 'id': stock.id,
