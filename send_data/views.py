@@ -482,7 +482,7 @@ class GetHolding(APIView):
     def get(self, request, format=None):
         user_id = request.user.id
         holding_list = Holdings.objects.filter(user=user_id)
-        possessed = holding_list.values('stock').annotate(avg_investment=Avg(F('volume') * F('bid_price')), total_volume=Sum('volume'))
+        possessed = holding_list.values('stock').annotate(avg_investment=Sum(F('volume') * F('bid_price')), total_volume=Sum('volume'))
         investment = 0
         current_value = 0
         posessed_data = []
