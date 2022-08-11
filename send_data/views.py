@@ -403,7 +403,7 @@ class OrderMatch(APIView):
                 sell_user = Users.objects.get(user_id=sell_order.user)
                 sell_user.available_funds += transaction_fund
                 sell_user.save()
-                selling_list = Holdings.objects.filter(user=sell_order.user, stock=sell_order.stock).order_by('-bid_price').all()
+                selling_list = Holdings.objects.filter(user=sell_order.user, stock=sell_order.stock).all()
                 discount_amount = transaction_volumn
                 for selling in selling_list:
                     if(discount_amount > selling.volume):
