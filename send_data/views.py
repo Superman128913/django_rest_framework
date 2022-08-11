@@ -276,15 +276,20 @@ class OrderList(APIView):
                 userSerializer.save()
         else:
             sufficient_stock = float(newPost['bid_volume'])
-            try:
-                available_stock = Holdings.objects.filter(user_id=user_id, stock=newPost['stock']).aggregate(Sum('volume'))['volume__sum']
-                if available_stock:
-                    if available_stock < sufficient_stock:
-                        err = {"non_field_errors":["Insufficient Stock Holdings"]}
-                        return Response(err, status=status.HTTP_400_BAD_REQUEST)
-            except:
+            available_stock = 0
+            # try:
+            holding_stock = Holdings.objects.filter(user=user_id, stock=newPost['stock']).aggregate(Sum('volume'))
+            if holding_stock['volume__sum']:
+                available_stock = holding_stock['volume__sum']
+                pending_sell = Orders.objects.filter(user=user_id, stock=newPost['stock'], status="PENDING", type="SELL").aggregate(volume=Sum(F('bid_volume') - F('executed_volume')))
+                if pending_sell['volume']:
+                    available_stock -= pending_sell['volume']
+            if available_stock < sufficient_stock:
                 err = {"non_field_errors":["Insufficient Stock Holdings"]}
                 return Response(err, status=status.HTTP_400_BAD_REQUEST)
+            # except:
+            #     err = {"non_field_errors":["Insufficient Stock Holdings"]}
+            #     return Response(err, status=status.HTTP_400_BAD_REQUEST)
 
         if serializer.is_valid():
             serializer.save()
