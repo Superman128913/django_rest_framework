@@ -537,6 +537,19 @@ class OhlcvDetail(APIView):
     """
     def get(self, request, format=None):
         day = int(request.GET['day'])
+        if day == 0:
+            returnData = [
+                {
+                    "day": 0,
+                    "stock": "string",
+                    "open": "100.00",
+                    "low": "100.00",
+                    "high": "100.00",
+                    "close": "100.00",
+                    "volume": 100
+                }
+            ]
+            return Response(returnData)
         try:
             market = Market_day.objects.get(day=day)
         except:
