@@ -516,7 +516,7 @@ class GetHolding(APIView):
                 'id': stock.id,
                 'name': stock.name,
                 'avg_bid_price': '{:.2f}'.format(each['avg_investment'] / each['total_volume']),
-                'total_volume': '{:.2f}'.format(each['total_volume'])
+                'total_volume': int(each['total_volume'])
             }
             investment += each['avg_investment']
             current_value += each['total_volume'] * stock.price
