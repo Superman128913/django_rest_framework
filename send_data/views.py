@@ -277,7 +277,7 @@ class OrderList(APIView):
         else:
             sufficient_stock = float(newPost['bid_volume'])
             try:
-                available_stock = Holdings.objects.get(user_id=user_id, stock=newPost['stock']).volume
+                available_stock = Holdings.objects.filter(user_id=user_id, stock=newPost['stock']).aggregate(Sum('volume'))['volume__sum']
                 if available_stock:
                     if available_stock < sufficient_stock:
                         err = {"non_field_errors":["Insufficient Stock Holdings"]}
@@ -417,16 +417,35 @@ class OrderMatch(APIView):
                         discount_amount = 0
                         break
                 ### increase ohlcv
-                Ohlcv.objects.create(
-                    day = day,
-                    stock = sell_order.stock,
-                    open = 0,
-                    high = 0,
-                    low = 0,
-                    close = 0,
-                    volume = transaction_volumn,
-                    market = market
-                )
+                
+                
+                try:
+                    ohlcv = Ohlcv.objects.get(day=market.day,stock=stock.id,market=market.id)
+                    if ohlcv.exists():
+                        ohlcv.volume += transaction_volumn,
+                        ohlcv.save()
+                    else:
+                        Ohlcv.objects.create(
+                            day = day,
+                            stock = sell_order.stock,
+                            open = 0,
+                            high = 0,
+                            low = 0,
+                            close = 0,
+                            volume = transaction_volumn,
+                            market = market
+                        )
+                except:
+                    Ohlcv.objects.create(
+                        day = day,
+                        stock = sell_order.stock,
+                        open = 0,
+                        high = 0,
+                        low = 0,
+                        close = 0,
+                        volume = transaction_volumn,
+                        market = market
+                    )
                 
                 buy_order.executed_volume += transaction_volumn
                 buy_user = Users.objects.get(user_id=buy_order.user)
