@@ -403,6 +403,7 @@ class OrderMatch(APIView):
                 sell_user = Users.objects.get(user_id=sell_order.user)
                 sell_user.available_funds += transaction_fund
                 sell_user.save()
+                ### decrease holdings
                 selling_list = Holdings.objects.filter(user=sell_order.user, stock=sell_order.stock).all()
                 discount_amount = transaction_volumn
                 for selling in selling_list:
@@ -415,6 +416,17 @@ class OrderMatch(APIView):
                         selling.save()
                         discount_amount = 0
                         break
+                ### increase ohlcv
+                Ohlcv.objects.create(
+                    day = day,
+                    stock = sell_order.stock,
+                    open = 0,
+                    high = 0,
+                    low = 0,
+                    close = 0,
+                    volume = transaction_volumn,
+                    market = market
+                )
                 
                 buy_order.executed_volume += transaction_volumn
                 buy_user = Users.objects.get(user_id=buy_order.user)
@@ -602,15 +614,37 @@ class CloseMarket(APIView):
                 high_price = holding_list.order_by('-bid_price').first().bid_price
                 low_price = holding_list.order_by('bid_price').first().bid_price
                 volume = holding_list.aggregate(Sum('volume'))['volume__sum']
-                Ohlcv.objects.create(
-                    day=market.day,
-                    stock=stock,
-                    open=open_price,
-                    high=high_price,
-                    low=low_price,
-                    close=close_price,
-                    volume=volume,
-                    market=market
-                )
+                
+                try:
+                    ohlcv = Ohlcv.objects.get(day=market.day,stock=stock.id,market=market.id)
+                    if ohlcv.exists():
+                        ohlcv.open = open_price,
+                        ohlcv.high = high_price,
+                        ohlcv.low = low_price,
+                        ohlcv.close = close_price,
+                        ohlcv.volume += volume,
+                        ohlcv.save()
+                    else:
+                        Ohlcv.objects.create(
+                            day=market.day,
+                            stock=stock,
+                            open=open_price,
+                            high=high_price,
+                            low=low_price,
+                            close=close_price,
+                            volume=volume,
+                            market=market
+                        )
+                except:
+                    Ohlcv.objects.create(
+                        day=market.day,
+                        stock=stock,
+                        open=open_price,
+                        high=high_price,
+                        low=low_price,
+                        close=close_price,
+                        volume=volume,
+                        market=market
+                    )
 
         return Response(status=status.HTTP_204_NO_CONTENT)
