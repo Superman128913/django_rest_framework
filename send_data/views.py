@@ -403,14 +403,25 @@ class OrderMatch(APIView):
                 sell_user = Users.objects.get(user_id=sell_order.user)
                 sell_user.available_funds += transaction_fund
                 sell_user.save()
-                Holdings.objects.create(user=sell_order.user, stock=sell_order.stock, volume=transaction_volumn * -1, bid_price=transaction_price, type="SELL", bought_on=day)
+                selling_list = Holdings.objects.filter(user=sell_order.user, stock=sell_order.stock).order_by('-bid_price').all()
+                discount_amount = transaction_volumn
+                for selling in selling_list:
+                    if(discount_amount > selling.volume):
+                        selling.delete()
+                        discount_amount -= selling.volume
+                        continue
+                    else:
+                        selling.volume -= discount_amount
+                        selling.save()
+                        discount_amount = 0
+                        break
                 
                 buy_order.executed_volume += transaction_volumn
                 buy_user = Users.objects.get(user_id=buy_order.user)
                 buy_user.available_funds -= transaction_fund
                 buy_user.blocked_funds -= buy_bid_price * transaction_volumn
                 buy_user.save()
-                Holdings.objects.create(user=buy_order.user, stock=buy_order.stock, volume=transaction_volumn, bid_price=transaction_price, type="BUY", bought_on=day)
+                Holdings.objects.create(user=buy_order.user, stock=buy_order.stock, volume=transaction_volumn, bid_price=transaction_price, bought_on=day)
 
             if(buy_order.executed_volume == buy_bid_volume):
                 buy_order.status = "COMPLETED"
@@ -445,7 +456,7 @@ class OrderMatch(APIView):
             buy_user.available_funds -= transaction_fund
             buy_user.blocked_funds -= buy_bid_price * transaction_volumn
             buy_user.save()
-            Holdings.objects.create(user=buy_order.user, stock=buy_order.stock, volume=transaction_volumn, bid_price=transaction_price, type="BUY", bought_on=day)
+            Holdings.objects.create(user=buy_order.user, stock=buy_order.stock, volume=transaction_volumn, bid_price=transaction_price, bought_on=day)
 
             if(buy_order.executed_volume == buy_order.bid_volume):
                 buy_order.status = "COMPLETED"
@@ -458,7 +469,7 @@ class OrderMatch(APIView):
 class GetHolding(APIView):
     def get(self, request, format=None):
         user_id = request.user.id
-        holding_list = Holdings.objects.filter(user=user_id, type="BUY")
+        holding_list = Holdings.objects.filter(user=user_id)
         possessed = holding_list.values('stock').annotate(avg_investment=Avg(F('volume') * F('bid_price')), total_volume=Sum('volume'))
         investment = 0
         current_value = 0
@@ -584,7 +595,7 @@ class CloseMarket(APIView):
         market = Market_day.objects.latest('day')
         stock_list = Stocks.objects.all()
         for stock in stock_list:
-            holding_list = Holdings.objects.filter(stock=stock, type="BUY")
+            holding_list = Holdings.objects.filter(stock=stock)
             if holding_list.exists():
                 open_price = holding_list.order_by('id').first().bid_price
                 close_price = holding_list.order_by('-id').first().bid_price
