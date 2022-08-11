@@ -652,15 +652,27 @@ class CloseMarket(APIView):
                 low_price = holding_list.order_by('bid_price').first().bid_price
                 volume = holding_list.aggregate(Sum('volume'))['volume__sum']
                 
-                ohlcv = Ohlcv.objects.get(day=market.day,stock=stock.id,market=market.id)
-                if ohlcv:
-                    ohlcv.open = open_price
-                    ohlcv.high = high_price
-                    ohlcv.low = low_price
-                    ohlcv.close = close_price
-                    ohlcv.volume = int(ohlcv.volume) + int(volume)
-                    ohlcv.save()
-                else:
+                try:
+                    ohlcv = Ohlcv.objects.get(day=market.day,stock=stock.id,market=market.id)
+                    if ohlcv:
+                        ohlcv.open = open_price
+                        ohlcv.high = high_price
+                        ohlcv.low = low_price
+                        ohlcv.close = close_price
+                        ohlcv.volume = int(ohlcv.volume) + int(volume)
+                        ohlcv.save()
+                    else:
+                        Ohlcv.objects.create(
+                            day=market.day,
+                            stock=stock,
+                            open=open_price,
+                            high=high_price,
+                            low=low_price,
+                            close=close_price,
+                            volume=volume,
+                            market=market
+                        )
+                except:
                     Ohlcv.objects.create(
                         day=market.day,
                         stock=stock,
