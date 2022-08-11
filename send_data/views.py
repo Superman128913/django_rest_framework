@@ -357,6 +357,14 @@ class OrderMatch(APIView):
     def post(self, request, format=None):
         # Sort all order of type “BUY” in  descending order
         buying_orders = Orders.objects.filter(type="BUY").all().exclude(status="COMPLETED").order_by('-bid_price')
+        try:
+            market = Market_day.objects.filter().latest('day')
+            if market:
+                day = market.day + 1
+            else:
+                day = 1
+        except:
+            day = 1
         # Matching
         for buy_order in buying_orders:
             buy_bid_volume = buy_order.bid_volume
@@ -392,14 +400,14 @@ class OrderMatch(APIView):
                 sell_user = Users.objects.get(user_id=sell_order.user)
                 sell_user.available_funds += transaction_fund
                 sell_user.save()
-                Holdings.objects.create(user=sell_order.user, stock=sell_order.stock, volume=transaction_volumn * -1, bid_price=transaction_price, type="SELL")
+                Holdings.objects.create(user=sell_order.user, stock=sell_order.stock, volume=transaction_volumn * -1, bid_price=transaction_price, type="SELL", day=day)
                 
                 buy_order.executed_volume += transaction_volumn
                 buy_user = Users.objects.get(user_id=buy_order.user)
                 buy_user.available_funds -= transaction_fund
                 buy_user.blocked_funds -= buy_bid_price * transaction_volumn
                 buy_user.save()
-                Holdings.objects.create(user=buy_order.user, stock=buy_order.stock, volume=transaction_volumn, bid_price=transaction_price, type="BUY")
+                Holdings.objects.create(user=buy_order.user, stock=buy_order.stock, volume=transaction_volumn, bid_price=transaction_price, type="BUY", day=day)
 
             if(buy_order.executed_volume == buy_bid_volume):
                 buy_order.status = "COMPLETED"
@@ -434,7 +442,7 @@ class OrderMatch(APIView):
             buy_user.available_funds -= transaction_fund
             buy_user.blocked_funds -= buy_bid_price * transaction_volumn
             buy_user.save()
-            Holdings.objects.create(user=buy_order.user, stock=buy_order.stock, volume=transaction_volumn, bid_price=transaction_price, type="BUY")
+            Holdings.objects.create(user=buy_order.user, stock=buy_order.stock, volume=transaction_volumn, bid_price=transaction_price, type="BUY", day=day)
 
             if(buy_order.executed_volume == buy_order.bid_volume):
                 buy_order.status = "COMPLETED"
