@@ -11,7 +11,7 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from django.http import Http404
 from django.utils import timezone
-from django.db.models import Sum, Avg
+from django.db.models import Sum, Avg, F
 
 from djoser import signals, utils
 from djoser.compat import get_user_email
@@ -195,7 +195,10 @@ class StockList(APIView):
         serializer = StockSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            returndata = serializer.data
+            value = returndata['price']
+            returndata['price'] = '{:.2f}'.format(value)
+            return Response(returndata, status=status.HTTP_201_CREATED)
 
 
 class StockDetail(APIView):
@@ -455,20 +458,29 @@ class OrderMatch(APIView):
 class GetHolding(APIView):
     def get(self, request, format=None):
         user_id = request.user.id
-        data = Holdings.objects.filter(user=user_id).aggregate(investment=Sum('volume'), current_value=Sum('bid_price'))
-        posessed = Holdings.objects.values('stock').annotate(avg_bid_price=Avg('bid_price'), total_volume=Sum('volume'))
+        holding_list = Holdings.objects.filter(user=user_id, type="BUY")
+        possessed = holding_list.values('stock').annotate(avg_investment=Avg(F('volume') * F('bid_price')), total_volume=Sum('volume'))
+        investment = 0
+        current_value = 0
         posessed_data = []
-        for each in posessed:
-            name = Stocks.objects.get(pk=each['stock']).sector.name
+        for each in possessed:
+            print(each)
+            stock = Stocks.objects.get(pk=each['stock'])
             new_row = {
-                'id': each['stock'],
-                'name': name,
-                'avg_bid_price': each['avg_bid_price'],
-                'total_volume': each['total_volume']
+                'id': stock.id,
+                'name': stock.name,
+                'avg_bid_price': '{:.2f}'.format(each['avg_investment'] / each['total_volume']),
+                'total_volume': '{:.2f}'.format(each['total_volume'])
             }
+            investment += each['avg_investment']
+            current_value += each['total_volume'] * stock.price
             posessed_data.append(new_row)
         
-        data['stocks_posessed'] = posessed_data
+        data = {
+            'investment': '{:.2f}'.format(investment),
+            'current_value': '{:.2f}'.format(current_value),
+            'stocks_possessed': posessed_data
+        }
         
         return Response(data)
 
@@ -574,7 +586,6 @@ class CloseMarket(APIView):
         stock_list = Stocks.objects.all()
         for stock in stock_list:
             holding_list = Holdings.objects.filter(stock=stock, type="BUY")
-            print('here')
             if holding_list.exists():
                 open_price = holding_list.order_by('id').first().bid_price
                 close_price = holding_list.order_by('-id').first().bid_price
