@@ -423,11 +423,23 @@ class OrderMatch(APIView):
                 ### increase ohlcv
                 
                 
-                ohlcv = Ohlcv.objects.get(day=day, stock=stock.id)
-                if ohlcv.exists():
-                    ohlcv.volume += transaction_volumn,
-                    ohlcv.save()
-                else:
+                try:
+                    ohlcv = Ohlcv.objects.get(day=market.day,stock=stock.id,market=market.id)
+                    if ohlcv.exists():
+                        ohlcv.volume += transaction_volumn,
+                        ohlcv.save()
+                    else:
+                        Ohlcv.objects.create(
+                            day = day,
+                            stock = sell_order.stock,
+                            open = 0,
+                            high = 0,
+                            low = 0,
+                            close = 0,
+                            volume = transaction_volumn,
+                            market = market
+                        )
+                except:
                     Ohlcv.objects.create(
                         day = day,
                         stock = sell_order.stock,
@@ -601,12 +613,16 @@ class CloseMarket(APIView):
         TokenAuthentication,
     ]
     def post(self, request, format=None):
-        markets = Market_day.objects
-        if markets.exists():
+        markets = Market_day.objects.filter()
+        if markets:
             market = markets.latest('day')
             market.status = "CLOSE"
             market.save()
         else:
+            data = {
+                "status": "CLOSE",
+                "day": 1
+                }
             market = Market_day.objects.create(day=1, status="CLOSE")
 
         stock_list = Stocks.objects.all()
