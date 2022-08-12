@@ -591,13 +591,10 @@ class OpenMarket(APIView):
         TokenAuthentication,
     ]
     def post(self, request, format=None):
-        try:
-            market = Market_day.objects.filter().latest('day')
-            if market:
-                day = market.day + 1
-            else:
-                day = 1
-        except:
+        market = Market_day.objects.filter()
+        if market.exists():
+            day = market.latest('day').day + 1
+        else:
             day = 1
         data = {
             "status": "OPEN",
@@ -617,34 +614,21 @@ class CloseMarket(APIView):
         TokenAuthentication,
     ]
     def post(self, request, format=None):
-        try:
-            market = Market_day.objects.filter().latest('day')
-            if market:
-                data = {
-                    "status": "CLOSE",
-                    "day": market.day
-                    }
-                serializer = MarketSerializer(market, data=data)
-            else:
-                data = {
-                    "status": "CLOSE",
-                    "day": 1
-                    }
-                serializer = MarketSerializer(data=data)
-        except:
+        markets = Market_day.objects.filter()
+        if markets:
+            market = markets.latest('day')
+            market.status = "CLOSE"
+            market.save()
+        else:
             data = {
                 "status": "CLOSE",
                 "day": 1
                 }
-            serializer = MarketSerializer(data=data)
-            
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
+            market = Market_day.objects.create(day=1, status="CLOSE")
 
-        market = Market_day.objects.latest('day')
         stock_list = Stocks.objects.all()
         for stock in stock_list:
-            holding_list = Holdings.objects.filter(stock=stock)
+            holding_list = Holdings.objects.filter(stock=stock, bought_on=market.day)
             if holding_list.exists():
                 open_price = holding_list.order_by('id').first().bid_price
                 close_price = holding_list.order_by('-id').first().bid_price
@@ -655,11 +639,11 @@ class CloseMarket(APIView):
                 try:
                     ohlcv = Ohlcv.objects.get(day=market.day,stock=stock.id,market=market.id)
                     if ohlcv.exists():
-                        ohlcv.open = open_price,
-                        ohlcv.high = high_price,
-                        ohlcv.low = low_price,
-                        ohlcv.close = close_price,
-                        ohlcv.volume += volume,
+                        ohlcv.open = open_price
+                        ohlcv.high = high_price
+                        ohlcv.low = low_price
+                        ohlcv.close = close_price
+                        ohlcv.volume += volume
                         ohlcv.save()
                     else:
                         Ohlcv.objects.create(
