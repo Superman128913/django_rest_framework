@@ -423,7 +423,7 @@ class OrderMatch(APIView):
                 ### increase ohlcv
                 
                 
-                ohlcvs = Ohlcv.objects.filter(day=market.day,stock=stock.id)
+                ohlcvs = Ohlcv.objects.filter(day=market.day,stock=sell_order.stock.id)
                 if ohlcvs.exists():
                     ohlcv = ohlcvs.first()
                     ohlcv.volume += transaction_volumn,
