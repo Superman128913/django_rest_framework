@@ -365,13 +365,12 @@ class OrderMatch(APIView):
     def post(self, request, format=None):
         # Sort all order of type “BUY” in  descending order
         buying_orders = Orders.objects.filter(type="BUY").all().exclude(status="COMPLETED").order_by('-bid_price')
-        try:
-            market = Market_day.objects.filter().latest('day')
-            if market:
-                day = market.day + 1
-            else:
-                day = 1
-        except:
+        markets = Market_day.objects
+        if markets.exists():
+            market = markets.filter().latest('day')
+            day = market.day
+        else:
+            market = Market_day.objects.create(day=1, status="OPEN")
             day = 1
         # Matching
         for buy_order in buying_orders:
@@ -424,23 +423,11 @@ class OrderMatch(APIView):
                 ### increase ohlcv
                 
                 
-                try:
-                    ohlcv = Ohlcv.objects.get(day=market.day,stock=stock.id,market=market.id)
-                    if ohlcv.exists():
-                        ohlcv.volume += transaction_volumn,
-                        ohlcv.save()
-                    else:
-                        Ohlcv.objects.create(
-                            day = day,
-                            stock = sell_order.stock,
-                            open = 0,
-                            high = 0,
-                            low = 0,
-                            close = 0,
-                            volume = transaction_volumn,
-                            market = market
-                        )
-                except:
+                ohlcv = Ohlcv.objects.get(day=day, stock=stock.id)
+                if ohlcv.exists():
+                    ohlcv.volume += transaction_volumn,
+                    ohlcv.save()
+                else:
                     Ohlcv.objects.create(
                         day = day,
                         stock = sell_order.stock,
@@ -614,16 +601,12 @@ class CloseMarket(APIView):
         TokenAuthentication,
     ]
     def post(self, request, format=None):
-        markets = Market_day.objects.filter()
-        if markets:
+        markets = Market_day.objects
+        if markets.exists():
             market = markets.latest('day')
             market.status = "CLOSE"
             market.save()
         else:
-            data = {
-                "status": "CLOSE",
-                "day": 1
-                }
             market = Market_day.objects.create(day=1, status="CLOSE")
 
         stock_list = Stocks.objects.all()
