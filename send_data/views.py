@@ -423,23 +423,12 @@ class OrderMatch(APIView):
                 ### increase ohlcv
                 
                 
-                try:
-                    ohlcv = Ohlcv.objects.get(day=market.day,stock=stock.id,market=market.id)
-                    if ohlcv.exists():
-                        ohlcv.volume += transaction_volumn,
-                        ohlcv.save()
-                    else:
-                        Ohlcv.objects.create(
-                            day = day,
-                            stock = sell_order.stock,
-                            open = 0,
-                            high = 0,
-                            low = 0,
-                            close = 0,
-                            volume = transaction_volumn,
-                            market = market
-                        )
-                except:
+                ohlcvs = Ohlcv.objects.filter(day=market.day,stock=stock.id)
+                if ohlcvs.exists():
+                    ohlcv = ohlcvs.first()
+                    ohlcv.volume += transaction_volumn,
+                    ohlcv.save()
+                else:
                     Ohlcv.objects.create(
                         day = day,
                         stock = sell_order.stock,
@@ -613,16 +602,12 @@ class CloseMarket(APIView):
         TokenAuthentication,
     ]
     def post(self, request, format=None):
-        markets = Market_day.objects.filter()
-        if markets:
+        markets = Market_day.objects
+        if markets.exists():
             market = markets.latest('day')
             market.status = "CLOSE"
             market.save()
         else:
-            data = {
-                "status": "CLOSE",
-                "day": 1
-                }
             market = Market_day.objects.create(day=1, status="CLOSE")
 
         stock_list = Stocks.objects.all()
@@ -635,27 +620,16 @@ class CloseMarket(APIView):
                 low_price = holding_list.order_by('bid_price').first().bid_price
                 volume = holding_list.aggregate(Sum('volume'))['volume__sum']
                 
-                try:
-                    ohlcv = Ohlcv.objects.get(day=market.day,stock=stock.id,market=market.id)
-                    if ohlcv.exists():
-                        ohlcv.open = open_price
-                        ohlcv.high = high_price
-                        ohlcv.low = low_price
-                        ohlcv.close = close_price
-                        ohlcv.volume += volume
-                        ohlcv.save()
-                    else:
-                        Ohlcv.objects.create(
-                            day=market.day,
-                            stock=stock,
-                            open=open_price,
-                            high=high_price,
-                            low=low_price,
-                            close=close_price,
-                            volume=volume,
-                            market=market
-                        )
-                except:
+                ohlcvs = Ohlcv.objects.filter(day=market.day,stock=stock.id)
+                if ohlcvs.exists():
+                    ohlcv = ohlcvs.first()
+                    ohlcv.open = open_price
+                    ohlcv.high = high_price
+                    ohlcv.low = low_price
+                    ohlcv.close = close_price
+                    ohlcv.volume += volume
+                    ohlcv.save()
+                else:
                     Ohlcv.objects.create(
                         day=market.day,
                         stock=stock,
