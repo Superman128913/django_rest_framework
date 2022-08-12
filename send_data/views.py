@@ -659,7 +659,7 @@ class CloseMarket(APIView):
                         ohlcv.high = high_price
                         ohlcv.low = low_price
                         ohlcv.close = close_price
-                        ohlcv.volume = int(ohlcv.volume) + int(volume)
+                        ohlcv.volume += volume
                         ohlcv.save()
                     else:
                         Ohlcv.objects.create(
