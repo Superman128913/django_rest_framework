@@ -16,6 +16,16 @@ from django.db.models import Sum, Avg, F
 from djoser import signals, utils
 from djoser.compat import get_user_email
 from djoser.conf import settings
+from opentelemetry import trace, metrics
+
+from random import randint
+from flask import Flask, request
+
+# Acquire a tracer
+tracer = trace.get_tracer(__name__)
+meter = metrics.get_meter(__name__)
+
+app = Flask(__name__)
 
 
 class IsOwnerOrReadOnlyNote(BasePermission):
@@ -25,13 +35,13 @@ class IsOwnerOrReadOnlyNote(BasePermission):
 
         return obj.author == request.user
 
-
-
+@app.route("/api/v1/users/profile")
 # Class based view to Get User Details using Token Authentication
 class UserDetailAPI(APIView):
     authentication_classes = (TokenAuthentication,)
     permission_classes = (IsAuthenticated,)
     def get(self,request,*args,**kwargs):
+    
         try:
             user_id = request.user.id
         except:            
@@ -117,6 +127,7 @@ class TokenDestroyView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@app.route("/api/v1/sectors")
 class SectorList(APIView):
     """
     List all sectors, or create a new sector.
@@ -128,15 +139,19 @@ class SectorList(APIView):
         TokenAuthentication,
     ]
     def get(self, request, format=None):
-        sector = Sectors.objects.all()
-        serializer = SectorSerializer(sector, many=True)
-        return Response(serializer.data)
+        with tracer.start_as_current_span("getSectors") as getSectors:
+            sector = Sectors.objects.all()
+            serializer = SectorSerializer(sector, many=True)
+            
+            return Response(serializer.data)
 
     def post(self, request, format=None):
-        serializer = SectorSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        with tracer.start_as_current_span("postSectors") as postSectors:
+            serializer = SectorSerializer(data=request.data)
+            
+            if serializer.is_valid(raise_exception=True):
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class SectorDetail(APIView):
@@ -358,7 +373,7 @@ class OrderMatch(APIView):
         TokenAuthentication,
     ]
     def post(self, request, format=None):
-        # Sort all order of type “BUY” in  descending order
+        # Sort all order of type “BUY” in  descending order
         buying_orders = Orders.objects.filter(type="BUY", status="PENDING").order_by('-bid_price').all()
         markets = Market_day.objects
         if markets.exists():
@@ -417,11 +432,10 @@ class OrderMatch(APIView):
                         discount_amount = 0
                         break
                 ### increase ohlcv
-                ohlcvs = Ohlcv.objects.filter(day=market.day, stock=sell_order.stock)
+                ohlcvs = Ohlcv.objects.filter(day=market.day, stock=sell_order.stock.id)
                 if ohlcvs.exists():
                     ohlcv = ohlcvs.first()
-
-                    ohlcv.volume = int(ohlcv.volume) + int(transaction_volumn)
+                    ohlcv.volume += int(transaction_volumn)
                     ohlcv.save()
                 else:
                     Ohlcv.objects.create(

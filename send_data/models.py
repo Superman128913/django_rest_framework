@@ -80,4 +80,3 @@ class Orders(models.Model):
     status = models.CharField(max_length=20)
     bid_volume = models.IntegerField()
     executed_volume = models.IntegerField()
-
