@@ -240,7 +240,7 @@ class StockList(APIView):
         stock = Stocks.objects.all()
         serializer = StockSerializer(stock, many=True)
         for each in serializer.data:
-            value = each['price'] * uniform(0.5, 1.5)
+            value = each['price'] * uniform(0.9, 1.1)
             each['price'] = '{:.2f}'.format(value)
             update_stock = Stocks.objects.get(pk=each['id'])
             update_stock.price = round(value, 2)
