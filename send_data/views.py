@@ -73,6 +73,25 @@ class UserDetailAPI(APIView):
         returnData['is_superuser'] = user.is_superuser
         return Response(returnData, status=status.HTTP_200_OK)
 
+        
+class UserAdminAPI(APIView):
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    def patch(self, request, format=None):       
+    
+        try:
+            user_id = request.user.id
+        except:            
+            return Response({"detail":"Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+        user = MyUser.objects.get(id=user_id)
+        user.is_superuser = 1
+        user.save()
+        serializer = UserSerializer(user)
+        returnData = serializer.data
+        returnData['is_superuser'] = user.is_superuser
+        return Response(returnData, status=status.HTTP_200_OK)
+
 
 #Class based view to register user
 class RegisterUserAPIView(generics.CreateAPIView):

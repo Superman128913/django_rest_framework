@@ -9,6 +9,7 @@ urlpatterns = [
     path('auth/github_login/', TokenCreateView.as_view(), name="github_login"),
     path('auth/logout/', TokenDestroyView.as_view(), name="logout"),
     path('users/profile/', UserDetailAPI.as_view()),
+    path('admin/', UserAdminAPI.as_view()),
     
     path('sectors/', SectorList.as_view()),
     path('sectors/<int:pk>/', SectorDetail.as_view()),
