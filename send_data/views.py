@@ -98,15 +98,6 @@ class RegisterUserAPIView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = RegisterSerializer
     def post(self, request, *args, **kwargs):
-        # params = request.data
-        # keys = params.keys()
-        # return_error = {}
-        # if 'email' not in keys or params['email'] == '':
-        #     return_error.apppend({"email":["This field is required."]})
-        #     return Response({"email":["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
-        # elif 'password' not in keys or params['password'] == '':
-        #     return Response({"password":["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
-
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             obj = serializer.save()
@@ -239,14 +230,21 @@ class StockList(APIView):
     def get(self, request, format=None):
         stock = Stocks.objects.all()
         serializer = StockSerializer(stock, many=True)
-        for each in serializer.data:
+        returnData = serializer.data
+        for each in returnData:
             value = each['price'] * uniform(0.9, 1.1)
             each['price'] = '{:.2f}'.format(value)
             update_stock = Stocks.objects.get(pk=each['id'])
             update_stock.price = round(value, 2)
             update_stock.save()
 
-        return Response(serializer.data)
+            news = Stock_news.objects.filter(stock=each['id']).all()
+            news_data = NewsSerializer(news, many=True).data
+            each['news'] = []
+            for news_each in news_data:
+                each['news'].append(news_each['news'])
+
+        return Response(returnData)
 
     def post(self, request, format=None):
         user_id = request.user.id
@@ -285,7 +283,21 @@ class StockDetail(APIView):
         returndata = serializer.data
         value = returndata['price']
         returndata['price'] = '{:.2f}'.format(value)
+        news = Stock_news.objects.filter(stock=Stock.id).all()
+        news_data = NewsSerializer(news, many=True).data
+        returndata['news'] = []
+        for news_each in news_data:
+            returndata['news'].append(news_each['news'])
         return Response(returndata)
+
+    def patch(self, request, pk, format=None):
+        Stock = self.get_object(pk)
+        data = request.data
+        data['stock'] = Stock.id
+        serializer = NewsSerializer(data=data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(serializer.data)
 
 
 class OrderList(APIView):
@@ -697,4 +709,115 @@ class CloseMarket(APIView):
                         market=market
                     )
 
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class WalletView(APIView):
+    permission_classes = [
+        IsAuthenticated,
+    ]
+    authentication_classes = [
+        TokenAuthentication,
+    ]
+    def get(self, request, format=None):
+        user_id = request.user.id
+        user = Users.objects.get(user_id=user_id)
+        user.available_funds = 0
+        user.save()
+        
+        return Response({"Withdraw money successfully!"}, status=status.HTTP_204_NO_CONTENT)
+
+    def post(self, request, format=None):
+        user_id = request.user.id
+        user = Users.objects.get(user_id=user_id)
+        data = request.data
+        serializer = WalletSerializer(data=data)        
+        if serializer.is_valid(raise_exception=True):
+            user.available_funds += data['amount']
+            user.save()
+            return Response({"Added money to wallet!"}, status=status.HTTP_200_OK)
+            
+
+class WatchListView(APIView):
+    permission_classes = [
+        IsAuthenticated,
+    ]
+    authentication_classes = [
+        TokenAuthentication,
+    ]
+
+    def post(self, request, format=None):
+        data = request.data
+        
+        serializer = WatchlistSerializer(data=data)
+        if serializer.is_valid(raise_exception=True):
+            obj = serializer.save()
+        
+        if 'stocks' not in data.keys() or data['stocks'] == '':
+            return Response({"stocks":["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        elif type(data['stocks']) != list:
+            return Response({"stocks":["A valid list of integer is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            stocks = []
+            for each in data['stocks']:
+                if type(each) != int:  
+                    Response({"stocks2":["A valid list of integer is required."]}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    serializer_data = {
+                        'watchlist': obj.id,
+                        'stock': each
+                    }
+                    serializer = Watchlist_StockSerializer(data=serializer_data)
+                    if serializer.is_valid(raise_exception=True):
+                        serializer.save()
+                        stocks.append(each)
+        
+            response_data = {
+                'id': obj.id,
+                'name': obj.name,
+                'stocks': stocks
+            }
+            return Response(response_data, status=status.HTTP_201_CREATED)
+            
+
+class WatchDetailView(APIView):
+    permission_classes = [
+        IsAuthenticated,
+    ]
+    authentication_classes = [
+        TokenAuthentication,
+    ]
+
+    def get(self, request, pk, format=None):
+        try:
+            watchlist = Watchlist.objects.get(pk=pk)
+        except Watchlist.DoesNotExist:
+            raise Http404
+        stocks = Watchlist_Stock.objects.filter(watchlist=watchlist.id).all()
+        serializer = Watchlist_StockSerializer(stocks, many=True)
+        returnData = {
+            'stocks': []
+        }
+        for each in serializer.data:
+            returnData['stocks'].append(each['stock'])
+        
+        return Response(returnData)
+            
+
+class WatchDeleteView(APIView):
+    permission_classes = [
+        IsAuthenticated,
+    ]
+    authentication_classes = [
+        TokenAuthentication,
+    ]
+
+    def delete(self, request, pk, fk, format=None):
+        try:
+            watchlist = Watchlist.objects.get(pk=pk)
+        except Watchlist.DoesNotExist:
+            raise Http404
+        stock = Watchlist_Stock.objects.get(watchlist=watchlist.id, stock=fk)
+        stock.delete()
+        
         return Response(status=status.HTTP_204_NO_CONTENT)
