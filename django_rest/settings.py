@@ -21,7 +21,6 @@ SECRET_KEY = 'django-insecure-okn$c17zn^lcap7v@45uadid5@gv9or92-2hn-olra%z#o^*a$
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -84,7 +83,7 @@ ALLOWED_HOSTS = [
     "localhost",
     "impulsetrading.io",
     "tu2k22-shivamgarg-ui.s3-website.ap-south-1.amazonaws.com",
-    ""
+    "127.0.0.1"
 ]
 
 
