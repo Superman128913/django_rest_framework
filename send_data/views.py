@@ -769,6 +769,22 @@ class WatchListView(APIView):
         TokenAuthentication,
     ]
 
+    def get(self, request, format=None):
+        watchlists = Watchlist.objects.all()
+        returnData = []
+        for watchlist in watchlists:
+            stocks = Watchlist_Stock.objects.filter(watchlist=watchlist.id).all()
+            serializer = Watchlist_StockSerializer(stocks, many=True)
+            eachData = {
+                'id': watchlist.id,
+                'stocks': []
+            }
+            for each in serializer.data:
+                eachData['stocks'].append(each['stock'])
+            returnData.append(eachData)
+        
+        return Response(returnData)
+
     def post(self, request, format=None):
         data = request.data
         
@@ -803,28 +819,29 @@ class WatchListView(APIView):
             return Response(response_data, status=status.HTTP_201_CREATED)
             
 
-class WatchDetailView(APIView):
-    permission_classes = [
-        IsAuthenticated,
-    ]
-    authentication_classes = [
-        TokenAuthentication,
-    ]
+# class WatchDetailView(APIView):
+#     permission_classes = [
+#         IsAuthenticated,
+#     ]
+#     authentication_classes = [
+#         TokenAuthentication,
+#     ]
 
-    def get(self, request, pk, format=None):
-        try:
-            watchlist = Watchlist.objects.get(pk=pk)
-        except Watchlist.DoesNotExist:
-            raise Http404
-        stocks = Watchlist_Stock.objects.filter(watchlist=watchlist.id).all()
-        serializer = Watchlist_StockSerializer(stocks, many=True)
-        returnData = {
-            'stocks': []
-        }
-        for each in serializer.data:
-            returnData['stocks'].append(each['stock'])
+#     def get(self, request, pk, format=None):
+#         try:
+#             watchlist = Watchlist.objects.get(pk=pk)
+#         except Watchlist.DoesNotExist:
+#             raise Http404
+#         stocks = Watchlist_Stock.objects.filter(watchlist=watchlist.id).all()
+#         serializer = Watchlist_StockSerializer(stocks, many=True)
+#         returnData = {
+#             'id': watchlist.id,
+#             'stocks': []
+#         }
+#         for each in serializer.data:
+#             returnData['stocks'].append(each['stock'])
         
-        return Response(returnData)
+#         return Response(returnData)
             
 
 class WatchDeleteView(APIView):
@@ -842,5 +859,34 @@ class WatchDeleteView(APIView):
             raise Http404
         stock = Watchlist_Stock.objects.get(watchlist=watchlist.id, stock=fk)
         stock.delete()
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def patch(self, request, pk, fk, format=None):
+        try:
+            watchlist = Watchlist.objects.get(pk=pk)
+        except Watchlist.DoesNotExist:
+            raise Http404
+        stock = Watchlist_Stock.objects.filter(watchlist=watchlist.id, stock=fk)
+        if not stock.exists():
+            serializer_data = {
+                'watchlist': pk,
+                'stock': fk
+            }
+            serializer = Watchlist_StockSerializer(data=serializer_data)
+            if serializer.is_valid(raise_exception=True):
+                serializer.save()
+
+        stocks = Watchlist_Stock.objects.filter(watchlist=watchlist.id).all()
+        serializer = Watchlist_StockSerializer(stocks, many=True)
+        returnData = {
+            'id': watchlist.id,
+            'stocks': []
+        }
+        for each in serializer.data:
+            returnData['stocks'].append(each['stock'])
+        
+        return Response(returnData)
+
         
         return Response(status=status.HTTP_204_NO_CONTENT)
