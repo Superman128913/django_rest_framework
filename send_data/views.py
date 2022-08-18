@@ -248,8 +248,7 @@ class StockList(APIView):
             if ohlcvs.exists():
                 ohlcv = ohlcvs.first()
                 ohlcv.high = max(ohlcv.high, update_stock.price)
-                ohlcv.low = min(ohlcv.high, update_stock.price)
-                ohlcv.close = update_stock.price
+                ohlcv.low = min(ohlcv.low, update_stock.price)
                 ohlcv.save()
             else:
                 previous = Ohlcv.objects.filter(day=market.day-1, stock=update_stock.id)
@@ -580,7 +579,6 @@ class OrderMatch(APIView):
             ohlcv = ohlcvs.first()
             ohlcv.high = max(ohlcv.high, transaction_price)
             ohlcv.low = min(ohlcv.high, transaction_price)
-            ohlcv.close = transaction_price
             ohlcv.volume += int(transaction_volume)
             ohlcv.save()
         else:
@@ -705,7 +703,7 @@ class OpenMarket(APIView):
         for stock in stock_list:
             previous = Ohlcv.objects.filter(day=day-1, stock=stock)
             if previous.exists():
-                open_price = '{:.2f}'.format(previous.first().close)
+                open_price = previous.first().close
             else:
                 open_price = stock.price
 
@@ -748,7 +746,7 @@ class CloseMarket(APIView):
             else:
                 previous = Ohlcv.objects.filter(day=market.day-1, stock=stock)
                 if previous.exists():
-                    open_price = '{:.2f}'.format(previous.first().close)
+                    open_price = previous.first().close
                 else:
                     open_price = stock.price
                 Ohlcv.objects.create(
