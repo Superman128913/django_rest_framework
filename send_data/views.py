@@ -560,7 +560,7 @@ class OrderMatch(APIView):
             else:
                 open_price = stock.price
             Ohlcv.objects.create(
-                day = market.day,
+                day = market,
                 stock = stock,
                 open = open_price,
                 high = max(open_price, transaction_price),
@@ -622,8 +622,8 @@ class OhlcvDetail(APIView):
                     open_price = previous.first().close
                 else:
                     open_price = stock.price
-                ohlcv = Ohlcv.objects.create(
-                    day=day,
+                Ohlcv.objects.create(
+                    day=market,
                     stock=stock,
                     open=open_price,
                     high=open_price,
@@ -669,6 +669,7 @@ class OpenMarket(APIView):
         serializer = MarketSerializer(data=data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
+            market = Market_day.objects.get(day=day)
         
         stock_list = Stocks.objects.all()
         for stock in stock_list:
@@ -677,8 +678,9 @@ class OpenMarket(APIView):
                 open_price = '{:.2f}'.format(previous.first().close)
             else:
                 open_price = stock.price
+
             Ohlcv.objects.create(
-                day=day,
+                day=market,
                 stock=stock,
                 open=open_price,
                 high=open_price,
@@ -720,7 +722,7 @@ class CloseMarket(APIView):
                 else:
                     open_price = stock.price
                 Ohlcv.objects.create(
-                    day=market.day,
+                    day=market,
                     stock=stock,
                     open=open_price,
                     high=open_price,
