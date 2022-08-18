@@ -83,7 +83,7 @@ ALLOWED_HOSTS = [
     "localhost",
     "impulsetrading.io",
     "tu2k22-shivamgarg-ui.s3-website.ap-south-1.amazonaws.com",
-    "127.0.0.1"
+    "10.10.11.200"
 ]
 
 

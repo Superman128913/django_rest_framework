@@ -228,6 +228,12 @@ class StockList(APIView):
         TokenAuthentication,
     ]
     def get(self, request, format=None):
+        markets = Market_day.objects
+        if markets.exists():
+            market = markets.filter().latest('day')
+        else:
+            market = Market_day.objects.create(day=1, status="OPEN")
+
         stock = Stocks.objects.all()
         serializer = StockSerializer(stock, many=True)
         returnData = serializer.data
@@ -237,6 +243,30 @@ class StockList(APIView):
             update_stock = Stocks.objects.get(pk=each['id'])
             update_stock.price = round(value, 2)
             update_stock.save()
+            
+            ohlcvs = Ohlcv.objects.filter(day=market.day, stock=update_stock.id)
+            if ohlcvs.exists():
+                ohlcv = ohlcvs.first()
+                ohlcv.high = max(ohlcv.high, update_stock.price)
+                ohlcv.low = min(ohlcv.high, update_stock.price)
+                ohlcv.close = update_stock.price
+                ohlcv.save()
+            else:
+                previous = Ohlcv.objects.filter(day=market.day-1, stock=update_stock.id)
+                if previous.exists():
+                    open_price = previous.first().close
+                else:
+                    open_price = update_stock.price
+                Ohlcv.objects.create(
+                    day = market.day,
+                    stock = update_stock,
+                    open = open_price,
+                    high = max(open_price, update_stock.price),
+                    low = min(open_price, update_stock.price),
+                    close = update_stock.price,
+                    volume = 0,
+                    market = market
+                )        
 
             news = Stock_news.objects.filter(stock=each['id']).all()
             news_data = NewsSerializer(news, many=True).data
@@ -777,6 +807,7 @@ class WatchListView(APIView):
             serializer = Watchlist_StockSerializer(stocks, many=True)
             eachData = {
                 'id': watchlist.id,
+                'name': watchlist.name,
                 'stocks': []
             }
             for each in serializer.data:
