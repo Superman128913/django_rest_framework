@@ -657,6 +657,8 @@ class OpenMarket(APIView):
     def post(self, request, format=None):
         market = Market_day.objects.filter()
         if market.exists():
+            if market.latest('day').status == "OPEN":
+                return Response(status=status.HTTP_204_NO_CONTENT)
             day = market.latest('day').day + 1
         else:
             day = 1
