@@ -560,7 +560,7 @@ class OrderMatch(APIView):
             else:
                 open_price = stock.price
             Ohlcv.objects.create(
-                day = market,
+                day = market.day,
                 stock = stock,
                 open = open_price,
                 high = max(open_price, transaction_price),
@@ -622,8 +622,8 @@ class OhlcvDetail(APIView):
                     open_price = previous.first().close
                 else:
                     open_price = stock.price
-                Ohlcv.objects.create(
-                    day=market,
+                ohlcv = Ohlcv.objects.create(
+                    day=market.day,
                     stock=stock,
                     open=open_price,
                     high=open_price,
@@ -680,7 +680,7 @@ class OpenMarket(APIView):
                 open_price = stock.price
 
             Ohlcv.objects.create(
-                day=market,
+                day=market.day,
                 stock=stock,
                 open=open_price,
                 high=open_price,
@@ -722,7 +722,7 @@ class CloseMarket(APIView):
                 else:
                     open_price = stock.price
                 Ohlcv.objects.create(
-                    day=market,
+                    day=market.day,
                     stock=stock,
                     open=open_price,
                     high=open_price,
