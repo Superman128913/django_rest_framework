@@ -812,8 +812,9 @@ class WatchListView(APIView):
                 'name': watchlist.name,
                 'stocks': []
             }
-            for each in serializer.data:
-                eachData['stocks'].append(each['stock'])
+            for each in stocks:
+                serializer = StockSerializer(each.stock)
+                eachData['stocks'].append(serializer.data)
             returnData.append(eachData)
         
         return Response(returnData)
@@ -932,10 +933,10 @@ class GainerView(APIView):
         gainer = Ohlcv.objects.filter(day=market.day).annotate(gain=(F('close') - F('open')) * (100 / F('open'))).order_by('-gain')
         returnData = []
         for gain in gainer:
-            returnData.append({
-                'id': gain.stock.id,
-                'gain': '{:.2f}'.format(gain.gain)
-            })
+            serializer = StockSerializer(gain.stock)
+            data = serializer.data
+            data['gain'] = '{:.2f}'.format(gain.gain)
+            returnData.append(data)
 
         return Response(returnData)
 
@@ -950,10 +951,10 @@ class LoserView(APIView):
         loser = Ohlcv.objects.filter(day=market.day).annotate(lose=(F('close') - F('open')) * (100 / F('open'))).order_by('lose')
         returnData = []
         for lose in loser:
-            returnData.append({
-                'id': lose.stock.id,
-                'lose': '{:.2f}'.format(lose.lose)
-            })
+            serializer = StockSerializer(lose.stock)
+            data = serializer.data
+            data['lose'] = '{:.2f}'.format(lose.lose)
+            returnData.append(data)
 
         return Response(returnData)
 
