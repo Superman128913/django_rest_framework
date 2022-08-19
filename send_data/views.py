@@ -239,7 +239,7 @@ class StockList(APIView):
         returnData = serializer.data
         for each in returnData:
             if market.status == "OPEN":
-                value = each['price'] * uniform(0.9, 1.1)
+                value = round(each['price'] * uniform(0.9, 1.1), 2)
             else:
                 value = each['price']
             each['price'] = '{:.2f}'.format(value)
@@ -252,7 +252,7 @@ class StockList(APIView):
                 ohlcv = ohlcvs.first()
                 ohlcv.high = max(ohlcv.high, update_stock.price)
                 ohlcv.low = min(ohlcv.low, update_stock.price)
-                ohlcv.close = update_stock.price,
+                ohlcv.close = update_stock.price
                 ohlcv.save()
             else:
                 previous = Ohlcv.objects.filter(day=market.day-1, stock=update_stock.id)

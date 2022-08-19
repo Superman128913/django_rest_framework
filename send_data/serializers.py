@@ -6,15 +6,6 @@ from rest_framework.validators import UniqueValidator
 from django.contrib.auth.password_validation import validate_password
 from .models import *
 
-def validate_decimals(value):
-    try:
-        return round(float(value), 2)
-    except:
-        raise ValidationError(
-            _('%(value)s is not an integer or a float  number'),
-            params={'value': value},
-        )
-
 
 #Serializer to Get user info
 class UserSerializer(serializers.ModelSerializer):
@@ -76,7 +67,6 @@ class SectorPatchSerializer(serializers.ModelSerializer):
 
 #Serializer for stock
 class StockSerializer(serializers.ModelSerializer):
-    price = serializers.FloatField(validators=[validate_decimals])
     class Meta:
         model = Stocks
         fields = ['id', 'sector', 'name', 'total_volume', 'unallocated', 'price']
