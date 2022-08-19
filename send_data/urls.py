@@ -33,4 +33,7 @@ urlpatterns = [
     path('watchlist/', WatchListView.as_view()),
     # path('watchlist/<int:pk>/', WatchDetailView.as_view()),
     path('watchlist/<int:pk>/<int:fk>/', WatchDeleteView.as_view()),
+
+    path('gainers/', GainerView.as_view()),
+    path('losers/', LoserView.as_view()),
 ]
