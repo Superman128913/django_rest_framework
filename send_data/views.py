@@ -530,7 +530,7 @@ class OrderMatch(APIView):
                 buy_user.blocked_funds -= buy_bid_price * transaction_volume
                 buy_user.save()
 
-                self.ohlcv_transaction(market, buy_order.stock, transaction_price, transaction_volume)
+                self.ohlcv_transaction(market=market, stocke=buy_order.stock, transaction_price=transaction_price, transaction_volume=transaction_volume)
                 Holdings.objects.create(user=buy_order.user, stock=buy_order.stock, volume=transaction_volume, bid_price=transaction_price, bought_on=day)
 
             if buy_order.executed_volume == buy_bid_volume:
@@ -563,8 +563,8 @@ class OrderMatch(APIView):
             buy_user.blocked_funds -= buy_bid_price * transaction_volume
             buy_user.save()
             
-            self.ohlcv_transaction(market, buy_order.stock, transaction_price, transaction_volume)
-            
+            self.ohlcv_transaction(market=market, stocke=buy_order.stock, transaction_price=transaction_price, transaction_volume=transaction_volume)
+                        
             stock.unallocated -= transaction_volume  
             stock.price = buy_bid_price  
             stock.save()
@@ -576,7 +576,7 @@ class OrderMatch(APIView):
             buy_order.save()
         return Response({"message":"Orders Executed Successfully!"})
 
-    def ohlcv_transaction(market, stock, transaction_price, transaction_volume):            
+    def ohlcv_transaction(self, market, stock, transaction_price, transaction_volume):            
         ### increase ohlcv
         ohlcvs = Ohlcv.objects.filter(day=market.day, stock=stock.id)
         if ohlcvs.exists():
