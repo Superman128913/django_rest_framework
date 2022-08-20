@@ -530,7 +530,7 @@ class OrderMatch(APIView):
                 buy_user.blocked_funds -= buy_bid_price * transaction_volume
                 buy_user.save()
 
-                self.ohlcv_transaction(market=market, stocke=buy_order.stock, transaction_price=transaction_price, transaction_volume=transaction_volume)
+                self.ohlcv_transaction(market=market, stock=buy_order.stock, transaction_price=transaction_price, transaction_volume=transaction_volume)
                 Holdings.objects.create(user=buy_order.user, stock=buy_order.stock, volume=transaction_volume, bid_price=transaction_price, bought_on=day)
 
             if buy_order.executed_volume == buy_bid_volume:
@@ -563,7 +563,7 @@ class OrderMatch(APIView):
             buy_user.blocked_funds -= buy_bid_price * transaction_volume
             buy_user.save()
             
-            self.ohlcv_transaction(market=market, stocke=buy_order.stock, transaction_price=transaction_price, transaction_volume=transaction_volume)
+            self.ohlcv_transaction(market=market, stock=buy_order.stock, transaction_price=transaction_price, transaction_volume=transaction_volume)
                         
             stock.unallocated -= transaction_volume  
             stock.price = buy_bid_price  
